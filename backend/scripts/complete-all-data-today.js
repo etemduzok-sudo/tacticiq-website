@@ -379,7 +379,8 @@ async function fillMatches() {
         
         matchesUpdated++;
       }
-      
+      const { ensureTeamsInStaticTeams } = require('../services/databaseService');
+      await ensureTeamsInStaticTeams(fixtures);
       if (fixtures.length > 0) {
         console.log(`   ${dateStr}: ${fixtures.length} maç`);
       }

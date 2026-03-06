@@ -367,9 +367,11 @@ async function syncAllMatches(leagues) {
       totalMatches++;
     }
     
+    const { ensureTeamsInStaticTeams } = require('../services/databaseService');
+    await ensureTeamsInStaticTeams(fixtures);
     console.log(`${fixtures.length} maç`);
   }
-  
+
   console.log(`\n✅ Toplam: ${totalMatches} maç güncellendi`);
 }
 

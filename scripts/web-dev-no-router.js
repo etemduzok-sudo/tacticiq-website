@@ -19,12 +19,15 @@ const BUNDLE_PATH = '/index.bundle?platform=web&dev=true&hot=false&lazy=true';
 let expoChild = null;
 
 const indexHtml = `<!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>TacticIQ</title>
-  <style>body{background:#0F172A;margin:0;}</style>
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; background: #0F172A; overflow: hidden; -webkit-overflow-scrolling: touch; }
+    #root { display: flex; flex-direction: column; min-height: 100%; height: 100%; width: 100%; }
+  </style>
 </head>
 <body>
   <div id="root"></div>

@@ -38,7 +38,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
 import { shortenCoachName } from '../utils/coachNameUtils';
-import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockMatchStart, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState, getMockUserTeamId } from '../data/mockTestData';
+import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockMatchStart, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState, getMockUserTeamId, getMock1HLiveLineupArray } from '../data/mockTestData';
 import { NetworkErrorDisplay } from './NetworkErrorDisplay';
 
 interface MatchDetailProps {
@@ -468,9 +468,23 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const isPotentiallyLive = matchStartedByTime && matchNotFinishedByTime && !isStatusFinished;
   const isMatchLiveEarly = isStatusLive || isPotentiallyLive;
   
+  // ✅ 1h mock maç: Kadro maçtan 5 dk önce açıklanır – countdownTicker ile her saniye kontrol.
+  React.useEffect(() => {
+    if (!matchId) return;
+    const id = Number(matchId);
+    if ((id === MOCK_MATCH_IDS.MOCK_1H_A || id === MOCK_MATCH_IDS.MOCK_1H_B)) {
+      const arr = getMock1HLiveLineupArray(id);
+      if (arr && arr.length >= 2) {
+        setManualLineups(arr);
+      }
+      return;
+    }
+  }, [matchId, countdownTicker]);
+
   // ✅ Lineups'ı çek. Canlı/bitmiş maçta ilk istek refresh=1 ile (cache atla, API'den taze kadro gelsin).
   React.useEffect(() => {
     if (!matchId) return;
+    if (Number(matchId) === MOCK_MATCH_IDS.MOCK_1H_A || Number(matchId) === MOCK_MATCH_IDS.MOCK_1H_B) return;
     const isLiveOrFinished = earlyMatchStatus && (LIVE_STATUSES_EARLY.includes(earlyMatchStatus) || FINISHED_STATUSES.some((s: string) => earlyMatchStatus?.startsWith?.(s) || earlyMatchStatus === s));
     const refresh = !!isLiveOrFinished;
     const fetchLineups = async (doRefresh: boolean): Promise<boolean> => {
@@ -1038,9 +1052,21 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         halftimeScore: currentMatch?.score?.halftime || null,
       };
     }
+    const id = Number(matchId);
+    // 1 saat sonra başlayan 2 mock maç: canlı state doğrudan computeLiveState(matchId) ile
+    if (id === MOCK_MATCH_IDS.MOCK_1H_A || id === MOCK_MATCH_IDS.MOCK_1H_B) {
+      const state = computeLiveState(id);
+      if (state) {
+        return {
+          homeScore: state.homeScore ?? 0,
+          awayScore: state.awayScore ?? 0,
+          halftimeScore: state.elapsed != null && state.elapsed >= 45 ? { home: state.homeScore ?? 0, away: state.awayScore ?? 0 } : null,
+        };
+      }
+    }
     
-    const matchStart = getMockMatchStart(Number(matchId));
-    const events = (Number(matchId) === MOCK_MATCH_IDS.TEST_1H) ? MATCH_2_EVENTS : (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H ? MATCH_1_EVENTS : MATCH_2_EVENTS);
+    const matchStart = getMockMatchStart(id);
+    const events = (id === MOCK_MATCH_IDS.TEST_1H) ? MATCH_2_EVENTS : (id === MOCK_MATCH_IDS.GS_FB || id === MOCK_MATCH_IDS.TEST_6H ? MATCH_1_EVENTS : MATCH_2_EVENTS);
     
     // ✅ Güvenlik kontrolü: events undefined olabilir
     if (!events || !Array.isArray(events)) {

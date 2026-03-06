@@ -40,22 +40,25 @@ const footballApi = require('../services/footballApi');
 
 const API_USAGE_FILE = path.join(__dirname, '..', 'data', 'api-usage-now.json');
 const API_USAGE_SERVER_FILE = path.join(__dirname, '..', 'data', 'api-usage-from-server.json');
-const API_RESERVE_FOR_LIVE = 7500; // Canli mac testi icin ayrilacak
-const API_MAX_USE = 75000 - API_RESERVE_FOR_LIVE; // 67500 - bu sayiya gelince dur
+const API_DAILY_LIMIT_TOTAL = 75000;
+const API_MAX_USE = 40000; // Güncelleme scripti en fazla bu kadar kullanir
+const API_RESERVE_FOR_LIVE = API_DAILY_LIMIT_TOTAL - API_MAX_USE; // 35000 – 10 sn'de bir canlı maç için
 function getServerUsage() {
   try {
     if (fs.existsSync(API_USAGE_SERVER_FILE)) {
       const s = JSON.parse(fs.readFileSync(API_USAGE_SERVER_FILE, 'utf8'));
-      return { used: s.used ?? 0, remaining: s.remaining ?? 75000, limit: s.limit ?? 75000 };
+      return { used: s.used ?? 0, remaining: s.remaining ?? API_DAILY_LIMIT_TOTAL, limit: s.limit ?? API_DAILY_LIMIT_TOTAL };
     }
   } catch (_) {}
-  return { used: 0, remaining: 75000, limit: 75000 };
+  return { used: 0, remaining: API_DAILY_LIMIT_TOTAL, limit: API_DAILY_LIMIT_TOTAL };
 }
 function shouldStopForReserve() {
   const s = getServerUsage();
   return s.used >= API_MAX_USE || s.remaining <= API_RESERVE_FOR_LIVE;
 }
 const API_USAGE_INTERVAL_MS = 5 * 60 * 1000; // 5 dk'da bir dosyaya yaz
+const PROGRESS_TXT_FILE = path.join(__dirname, '..', 'data', 'db-update-progress.txt');
+
 function writeApiUsage() {
   try {
     const stats = footballApi.getCacheStats ? footballApi.getCacheStats() : null;
@@ -64,10 +67,42 @@ function writeApiUsage() {
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(API_USAGE_FILE, JSON.stringify({
       count,
-      limit: 75000,
+      limit: API_DAILY_LIMIT_TOTAL,
+      maxUse: API_MAX_USE,
+      reserveLive: API_RESERVE_FOR_LIVE,
       at: new Date().toISOString(),
     }, null, 0));
   } catch (e) { /* ignore */ }
+}
+
+/** 5 dk'da bir ilerleme raporunu txt dosyasına yaz (kullanıcı tail ile takip edebilir) */
+async function writeProgressTxt() {
+  try {
+    const stats = await fetchStats();
+    const dataDir = path.dirname(PROGRESS_TXT_FILE);
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    const api = getServerUsage();
+    const avgPct = Math.round((stats.coachPct + stats.colorsPct + stats.squadsPct + stats.ratingPct) / 4);
+    const lines = [
+      '========== DB GUNCELLEME ILERLEMESI (5 dk guncelleme) ==========',
+      `Son guncelleme: ${new Date().toLocaleString('tr-TR')}`,
+      '',
+      `  Koç:        ${stats.coachPct}%  (${stats.withCoach} / ${stats.totalTeams} takim)`,
+      `  Renk:       ${stats.colorsPct}%  (${stats.withColors} / ${stats.totalTeams} takim)`,
+      `  Kadro:      ${stats.squadsPct}%  (${stats.squads2025} kadro 2025)`,
+      `  Rating:     ${stats.ratingPct}%  (${stats.playersWithRating} / ${stats.totalPlayers} oyuncu)`,
+      `  ORTALAMA:   ${avgPct}%`,
+      '',
+      `  API: ${api.used} / ${api.limit} kullanildi  |  Guncelleme kotasi: ${API_MAX_USE}  |  Canli mac icin ayrilan: ${API_RESERVE_FOR_LIVE}`,
+      '================================================================================',
+      '',
+    ];
+    fs.writeFileSync(PROGRESS_TXT_FILE, lines.join('\n'));
+  } catch (e) {
+    try {
+      fs.writeFileSync(PROGRESS_TXT_FILE, `Hata: ${e.message}\n${new Date().toISOString()}\n`);
+    } catch (_) {}
+  }
 }
 
 const supabaseKey =
@@ -81,7 +116,6 @@ if (!process.env.SUPABASE_URL || !supabaseKey) {
 const supabase = createClient(process.env.SUPABASE_URL, supabaseKey);
 
 const SEASON = 2025;
-const API_DAILY_LIMIT = 75000; // Günlük sorgu limiti (API-Football)
 const DELAY_MS = Math.max(400, parseInt(process.argv.find(a => a.startsWith('--delay='))?.replace('--delay=', '') || '1000', 10));
 // Takım sync: 1 takım = 1 geçişte koç+renk+kadro (4–6 API çağrısı). --delay= ile ayarlanır.
 const TEAM_SYNC_BATCH_SIZE = 50;   // 30→50: daha az duraklama
@@ -310,12 +344,12 @@ async function withRetry429(fn, retries = 2) {
 async function runTeamDataPhase() {
   console.log('\n╔══ FAZ 1: TAKIM VERİSİ (Koç + Renk + Kadro) %100 ══╗');
   console.log('   Kadrosu DOLU takımlar: hafif sync (sadece koç+renk, 2 API/takım). Kadrosu EKSİK: tam sync.');
-  console.log('   Canli mac icin 7500 API ayrildi; kullanım ' + API_MAX_USE + "'e gelince script durur.\n");
+  console.log('   Guncelleme kotasi: ' + API_MAX_USE + "; kalan " + API_RESERVE_FOR_LIVE + " API 10 sn'de bir canli mac icin.\n");
   let round = 0;
   while (true) {
     if (shouldStopForReserve()) {
       const s = getServerUsage();
-      console.log(`\n   ⏹ KOTA: ${s.used} / ${API_MAX_USE} – 7500 API canli mac testi icin ayrildi, script durduruluyor.`);
+      console.log(`\n   ⏹ KOTA: ${s.used} / ${API_MAX_USE} kullanildi. Kalan ${API_RESERVE_FOR_LIVE} canli mac icin, script durduruluyor.`);
       return;
     }
     const stats = await fetchStats();
@@ -336,7 +370,7 @@ async function runTeamDataPhase() {
     let ok = 0, coachOk = 0, colorsOk = 0, noData = 0;
     for (let i = 0; i < toProcess.length; i++) {
       if (shouldStopForReserve()) {
-        console.log(`\n   ⏹ KOTA: 67500'e ulasildi (7500 canli mac icin ayrildi). Script durduruluyor.`);
+        console.log(`\n   ⏹ KOTA: ${API_MAX_USE} kullanildi. Script durduruluyor.`);
         return;
       }
       const t = toProcess[i];
@@ -385,7 +419,7 @@ async function runRatingsPhase() {
   let noProgressRuns = 0;
   while (true) {
     if (shouldStopForReserve()) {
-      console.log(`   ⏹ KOTA: 67500 – 7500 canli mac icin ayrildi, rating fazi atlaniyor.\n`);
+      console.log(`   ⏹ KOTA: ${API_MAX_USE} kullanildi, ${API_RESERVE_FOR_LIVE} canli mac (10 sn) icin ayrildi, rating fazi atlaniyor.\n`);
       return;
     }
     const stats = await fetchStats();
@@ -398,8 +432,8 @@ async function runRatingsPhase() {
       return;
     }
     if (lastRatingPct === stats.ratingPct) noProgressRuns++; else noProgressRuns = 0;
-    if (noProgressRuns >= 5) {
-      console.log(`   Rating: 5 tur üst üste ilerleme yok (${stats.ratingPct}%). API limiti veya veri bitti. Çıkılıyor.\n`);
+    if (noProgressRuns >= 10) {
+      console.log(`   Rating: 10 tur üst üste ilerleme yok (${stats.ratingPct}%). API limiti veya veri bitti. Çıkılıyor.\n`);
       return;
     }
     lastRatingPct = stats.ratingPct;
@@ -431,22 +465,30 @@ async function main() {
     process.exit(1);
   });
   writeApiUsage();
+  writeProgressTxt();
   const apiUsageTimer = setInterval(writeApiUsage, API_USAGE_INTERVAL_MS);
-  process.on('exit', () => clearInterval(apiUsageTimer));
+  const progressTimer = setInterval(writeProgressTxt, API_USAGE_INTERVAL_MS);
+  process.on('exit', () => {
+    clearInterval(apiUsageTimer);
+    clearInterval(progressTimer);
+  });
   try {
     console.log('');
     console.log('╔════════════════════════════════════════════════════════════════╗');
     console.log('║  SIRALI DB TAM DOLDURMA: Takım (Koç+Renk+Kadro) → Rating %100   ║');
     console.log('╚════════════════════════════════════════════════════════════════╝');
-    console.log(`   Günlük API limiti: ${API_DAILY_LIMIT} sorgu. 1 takım sync = koç+renk+kadro birlikte.`);
+    console.log(`   API: guncelleme max ${API_MAX_USE} | canli mac icin ayrilan: ${API_RESERVE_FOR_LIVE} (10 sn'de bir).`);
+    console.log(`   Ilerleme dosyasi (5 dk): ${PROGRESS_TXT_FILE}`);
     const initial = await fetchStats();
     console.log(`   Mevcut: Koç ${initial.coachPct}% | Renk ${initial.colorsPct}% | Kadro ${initial.squadsPct}% | Rating ${initial.ratingPct}%`);
     console.log('');
 
     await runTeamDataPhase();
+    await writeProgressTxt();
     await runRatingsPhase();
 
     const final = await fetchStats();
+    await writeProgressTxt();
     console.log('');
     console.log('╔════════════════════════════════════════════════════════════════╗');
     console.log('║  BİTTİ                                                        ║');

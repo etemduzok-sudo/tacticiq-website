@@ -13,13 +13,13 @@ npm run dev
 ```
 Veya ana klasörden: `npm run backend:dev`
 
-### 2. Frontend – Web (port 8082)
+### 2. Frontend – Web (port 8082) – 500 / MIME type hatası önlemek için
 ```bash
 cd c:\TacticIQ
-npm start
+npm run web:8082
 ```
-Tarayıcıda web için: `npx expo start --web`  
-Adres çıktıda yazar (genelde http://localhost:8082 veya 19006).
+Metro 8081'de, proxy 8082'de çalışır; tarayıcıda **http://localhost:8082** açın.  
+(Bundle URL'de routerRoot/hermes olmadan sunulur; "500 Internal Server Error" / "MIME type application/json" hatası oluşmaz.)
 
 ### 3. Cache temizleyerek frontend
 ```bash
@@ -28,5 +28,9 @@ npx expo start -c
 ```
 
 ## Sorun: "Bu sayfaya ulaşılamıyor" / ERR_CONNECTION_REFUSED
-- **localhost:8082** açılmıyorsa → Frontend (Expo) kapalı; yukarıdaki `npm start` veya `npx expo start --web` ile başlatın.
+- **localhost:8082** açılmıyorsa → Frontend kapalı; `npm run web:8082` ile başlatın.
 - **Maçlar gelmiyor / API hataları** → Backend (3001) kapalı; `npm run backend:dev` ile başlatın.
+
+## Sorun: 500 Internal Server Error / MIME type 'application/json' / Refused to execute script
+- **Sebep:** Expo doğrudan 8082'de çalışınca bundle URL'de `routerRoot=app` ve `hermes` ekleniyor, Metro 500 dönüyor.
+- **Çözüm:** `npm run web:8082` kullanın (Metro 8081, proxy 8082; proxy temiz bundle URL sunar).

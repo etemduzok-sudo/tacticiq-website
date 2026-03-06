@@ -793,7 +793,7 @@ async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEA
       if (MAX_USE_FROM_SERVER > 0) {
         const s = getServerUsageFromFile();
         if (s.used >= MAX_USE_FROM_SERVER) {
-          console.log(`\n⚠️ Kota ${MAX_USE_FROM_SERVER} (7500 canli mac icin ayrildi). Durduruluyor.`);
+          console.log(`\n⚠️ Kota ${MAX_USE_FROM_SERVER} (guncelleme limiti). Kalan API canli mac icin. Durduruluyor.`);
           return { total: totalPlayers, processed: processedPlayers, skipped: skippedPlayers, errors, apiCalls };
         }
       }
@@ -956,7 +956,7 @@ async function main() {
       }
     }
     console.log(`\n⚠️  API istatistik çekme aktif!`);
-    console.log(`   - Max ${MAX_API_CALLS} API çağrısı${MAX_USE_FROM_SERVER ? ` (67500'de dur, 7500 canli mac icin)` : ` (${API_RESERVE} yedek bırakıldı)`}`);
+    console.log(`   - Max ${MAX_API_CALLS} API çağrısı${MAX_USE_FROM_SERVER ? ` (guncelleme limiti ${MAX_USE_FROM_SERVER}, kalan canli mac icin)` : ` (${API_RESERVE} yedek bırakıldı)`}`);
     console.log(`   - En büyük liglerden başlayarak işlenecek\n`);
   }
   

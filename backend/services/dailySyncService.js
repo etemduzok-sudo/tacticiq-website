@@ -121,7 +121,9 @@ async function upsertMatch(fixture) {
         referee: fixture.fixture.referee || null,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
-    
+
+    const { ensureTeamsInStaticTeams } = require('./databaseService');
+    await ensureTeamsInStaticTeams([fixture]);
     return true;
   } catch (error) {
     console.error(`Error upserting match ${fixture.fixture.id}:`, error.message);

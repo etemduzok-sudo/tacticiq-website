@@ -565,4 +565,6 @@ class DatabaseService {
   }
 }
 
-module.exports = new DatabaseService();
+const databaseService = new DatabaseService();
+module.exports = databaseService;
+module.exports.ensureTeamsInStaticTeams = ensureTeamsInStaticTeams;

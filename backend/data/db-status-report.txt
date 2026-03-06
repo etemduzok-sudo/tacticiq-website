@@ -3882,3 +3882,262 @@ Zaman: 05.03.2026 22:09:29
   GENEL TAMAMLANMA: 77%
   Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
 ================================================
+
+========== DB GUNCELLEME RAPORU (1 dk) ==========
+Zaman: 06.03.2026 23:11:58
+
+  *** 1 DK ILERLEME: YOK - run-phased-db-complete.js calismiyor veya bu aralikta veri degismedi. Ilerleme icin script'i baslatin. ***
+
+--- 1 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6626  [+5]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  (Kadrolar: API /players/squads = guncel kadro, transferler dahil; DB'de season=2025 etiketi)
+  Oyuncu (ratingli): 132395  [degismedi]
+  Toplam oyuncu: 140415  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- BASELINE (06.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  Oyuncu (ratingli): 132395  [degismedi]
+  Toplam oyuncu: 140415  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- API KULLANIMI (API-Football sunucudan, her istekte guncellenir) ---
+  API (panel ile ayni): 72905 / 75000 kullanildi (%97) | kalan: 2095  (son: 06.03.2026 23:12:11)
+  Not: Bu sayi tum uygulama toplamidir (backend + sync). Neden %42 istek DB'de %42 ilerleme degil: her takim 4-6 istek, bos/429 yanitlar da sayilir.
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 106% | Rating: 94%
+  GENEL TAMAMLANMA: 100%
+  Hedef: %100 tamamlandi.
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (1 dk) ==========
+Zaman: 06.03.2026 23:17:11
+
+  *** 1 DK ILERLEME: VAR  ***  Ratingli oyuncu -6
+
+--- 1 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  (Kadrolar: API /players/squads = guncel kadro, transferler dahil; DB'de season=2025 etiketi)
+  Oyuncu (ratingli): 132389  [-6]
+  Toplam oyuncu: 140409  [-6]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- BASELINE (06.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  Oyuncu (ratingli): 132389  [-6]
+  Toplam oyuncu: 140409  [-6]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- API KULLANIMI (API-Football sunucudan, her istekte guncellenir) ---
+  API (panel ile ayni): 74524 / 75000 kullanildi (%99) | kalan: 476  (son: 06.03.2026 23:17:27)
+  Not: Bu sayi tum uygulama toplamidir (backend + sync). Neden %42 istek DB'de %42 ilerleme degil: her takim 4-6 istek, bos/429 yanitlar da sayilir.
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 106% | Rating: 94%
+  GENEL TAMAMLANMA: 100%
+  Hedef: %100 tamamlandi.
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (1 dk) ==========
+Zaman: 06.03.2026 23:22:11
+
+  *** 1 DK ILERLEME: VAR  ***  Ratingli oyuncu -5
+
+--- 1 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  (Kadrolar: API /players/squads = guncel kadro, transferler dahil; DB'de season=2025 etiketi)
+  Oyuncu (ratingli): 132384  [-5]
+  Toplam oyuncu: 140404  [-5]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- BASELINE (06.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  Oyuncu (ratingli): 132384  [-11]
+  Toplam oyuncu: 140404  [-11]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- API KULLANIMI (API-Football sunucudan, her istekte guncellenir) ---
+  API (API-Football): - (henuz istek atilmadi)
+  Not: Bu sayi tum uygulama toplamidir (backend + sync). Neden %42 istek DB'de %42 ilerleme degil: her takim 4-6 istek, bos/429 yanitlar da sayilir.
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 106% | Rating: 94%
+  GENEL TAMAMLANMA: 100%
+  Hedef: %100 tamamlandi.
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (1 dk) ==========
+Zaman: 06.03.2026 23:27:11
+
+  *** 1 DK ILERLEME: YOK - run-phased-db-complete.js calismiyor veya bu aralikta veri degismedi. Ilerleme icin script'i baslatin. ***
+
+--- 1 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  (Kadrolar: API /players/squads = guncel kadro, transferler dahil; DB'de season=2025 etiketi)
+  Oyuncu (ratingli): 132384  [degismedi]
+  Toplam oyuncu: 140404  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- BASELINE (06.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  Oyuncu (ratingli): 132384  [-11]
+  Toplam oyuncu: 140404  [-11]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- API KULLANIMI (API-Football sunucudan, her istekte guncellenir) ---
+  API (panel ile ayni): 1 / 75000 kullanildi (%0) | kalan: 74999  (son: 06.03.2026 23:27:31)
+  Not: Bu sayi tum uygulama toplamidir (backend + sync). Neden %42 istek DB'de %42 ilerleme degil: her takim 4-6 istek, bos/429 yanitlar da sayilir.
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 106% | Rating: 94%
+  GENEL TAMAMLANMA: 100%
+  Hedef: %100 tamamlandi.
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (1 dk) ==========
+Zaman: 06.03.2026 23:32:11
+
+  *** 1 DK ILERLEME: YOK - run-phased-db-complete.js calismiyor veya bu aralikta veri degismedi. Ilerleme icin script'i baslatin. ***
+
+--- 1 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  (Kadrolar: API /players/squads = guncel kadro, transferler dahil; DB'de season=2025 etiketi)
+  Oyuncu (ratingli): 132384  [degismedi]
+  Toplam oyuncu: 140404  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- BASELINE (06.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  Oyuncu (ratingli): 132384  [-11]
+  Toplam oyuncu: 140404  [-11]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- API KULLANIMI (API-Football sunucudan, her istekte guncellenir) ---
+  API (panel ile ayni): 1 / 75000 kullanildi (%0) | kalan: 74999  (son: 06.03.2026 23:32:38)
+  Not: Bu sayi tum uygulama toplamidir (backend + sync). Neden %42 istek DB'de %42 ilerleme degil: her takim 4-6 istek, bos/429 yanitlar da sayilir.
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 106% | Rating: 94%
+  GENEL TAMAMLANMA: 100%
+  Hedef: %100 tamamlandi.
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (1 dk) ==========
+Zaman: 06.03.2026 23:37:11
+
+  *** 1 DK ILERLEME: YOK - run-phased-db-complete.js calismiyor veya bu aralikta veri degismedi. Ilerleme icin script'i baslatin. ***
+
+--- 1 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  (Kadrolar: API /players/squads = guncel kadro, transferler dahil; DB'de season=2025 etiketi)
+  Oyuncu (ratingli): 132384  [degismedi]
+  Toplam oyuncu: 140404  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- BASELINE (06.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  Oyuncu (ratingli): 132384  [-11]
+  Toplam oyuncu: 140404  [-11]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- API KULLANIMI (API-Football sunucudan, her istekte guncellenir) ---
+  API (panel ile ayni): 1 / 75000 kullanildi (%0) | kalan: 74999  (son: 06.03.2026 23:37:33)
+  Not: Bu sayi tum uygulama toplamidir (backend + sync). Neden %42 istek DB'de %42 ilerleme degil: her takim 4-6 istek, bos/429 yanitlar da sayilir.
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 106% | Rating: 94%
+  GENEL TAMAMLANMA: 100%
+  Hedef: %100 tamamlandi.
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (1 dk) ==========
+Zaman: 06.03.2026 23:42:11
+
+  *** 1 DK ILERLEME: YOK - run-phased-db-complete.js calismiyor veya bu aralikta veri degismedi. Ilerleme icin script'i baslatin. ***
+
+--- 1 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  (Kadrolar: API /players/squads = guncel kadro, transferler dahil; DB'de season=2025 etiketi)
+  Oyuncu (ratingli): 132384  [degismedi]
+  Toplam oyuncu: 140404  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- BASELINE (06.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6626  [degismedi]
+  Coach ile: 6621 (100%)  [degismedi]
+  Renkler ile: 6620 (100%)  [degismedi]
+  Kadrolar 2025: 7016 (106%)  [degismedi]
+  Oyuncu (ratingli): 132384  [-11]
+  Toplam oyuncu: 140404  [-11]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 100%  [degismedi]
+
+--- API KULLANIMI (API-Football sunucudan, her istekte guncellenir) ---
+  API (panel ile ayni): 1 / 75000 kullanildi (%0) | kalan: 74999  (son: 06.03.2026 23:42:30)
+  Not: Bu sayi tum uygulama toplamidir (backend + sync). Neden %42 istek DB'de %42 ilerleme degil: her takim 4-6 istek, bos/429 yanitlar da sayilir.
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 106% | Rating: 94%
+  GENEL TAMAMLANMA: 100%
+  Hedef: %100 tamamlandi.
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================

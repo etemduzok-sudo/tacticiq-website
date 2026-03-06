@@ -1736,34 +1736,17 @@ router.get('/:id/team-performance-avg', async (req, res) => {
 });
 
 // GET /api/matches/:id/community-stats - Topluluk tahmin istatistikleri
+// Hibrit mod: Gerçek maçlar + mock topluluk verisi. Tüm maçlar için mock döner (test için).
 router.get('/:id/community-stats', async (req, res) => {
   try {
     const matchId = parseInt(req.params.id, 10);
-    
-    // Mock maç için özel veri
-    if (matchId === 999999) {
-      const { MOCK_COMMUNITY_DATA } = require('../scripts/create-mock-community-data');
-      return res.json({
-        success: true,
-        data: MOCK_COMMUNITY_DATA,
-        source: 'mock'
-      });
-    }
-    
-    // Gerçek maçlar için veritabanından topluluk verilerini çek
-    // TODO: Gerçek implementasyon - predictions tablosundan istatistikler
-    res.json({
+    const { MOCK_COMMUNITY_DATA } = require('../scripts/create-mock-community-data');
+
+    // Hibrit: Her maç için mock topluluk verisi (gerçek maçlar üzerinde topluluk UI testi)
+    return res.json({
       success: true,
-      data: {
-        totalUsers: 0,
-        scorePredictions: {},
-        totalGoalsPredictions: {},
-        firstGoalPredictions: {},
-        cardPredictions: {},
-        playerPredictions: {}
-      },
-      source: 'database',
-      message: 'Community stats not yet implemented for real matches'
+      data: MOCK_COMMUNITY_DATA,
+      source: 'mock'
     });
   } catch (error) {
     console.error('Error fetching community stats:', error);

@@ -5,10 +5,10 @@ foreach ($p in $ports) {
   if ($found) {
     $found -split "`n" | ForEach-Object {
       if ($_ -match '\s+(\d+)\s*$') {
-        $pid = $matches[1]
-        if ($pid -ne '0') {
-          Write-Host "Kapatiliyor: PID $pid (port $p)"
-          taskkill /PID $pid /F 2>$null
+        $procId = $matches[1]
+        if ($procId -ne '0') {
+          Write-Host "Kapatiliyor: PID $procId (port $p)"
+          taskkill /PID $procId /F 2>$null
         }
       }
     }

@@ -318,6 +318,14 @@ const NATIONAL_TEAMS: StaticTeam[] = [
 // EXPORTS
 // ==========================================
 
+// Mock test takımları – 1 saat sonra başlayan simülasyon maçları için (favori ekleyince maçlar listelenir)
+const MOCK_CLUB_TEAMS: StaticTeam[] = [
+  { id: 9011, name: 'Mock 1', country: 'TR', league: 'Mock Demo Lig', type: 'club', colors: ['#1FA2A6', '#0F2A24'] },
+  { id: 9012, name: 'Mock 2', country: 'TR', league: 'Mock Demo Lig', type: 'club', colors: ['#F97316', '#EA580C'] },
+  { id: 9021, name: 'Mock Takım A', country: 'TR', league: 'Mock Test Lig', type: 'club', colors: ['#8B5CF6', '#6D28D9'] },
+  { id: 9022, name: 'Mock Takım B', country: 'TR', league: 'Mock Test Lig', type: 'club', colors: ['#10B981', '#059669'] },
+];
+
 // Tüm kulüp takımları birleştir
 export const ALL_CLUB_TEAMS: StaticTeam[] = [
   ...SUPER_LIG,
@@ -333,6 +341,7 @@ export const ALL_CLUB_TEAMS: StaticTeam[] = [
   ...LIGA_MX,
   ...SAUDI_PRO_LEAGUE,
   ...OTHER_CLUBS,
+  ...MOCK_CLUB_TEAMS,
 ];
 
 // Tüm milli takımlar

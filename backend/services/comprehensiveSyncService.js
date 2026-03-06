@@ -438,6 +438,8 @@ async function updateMatchInDb(fixture) {
   };
   
   await supabase.from('matches').upsert(match, { onConflict: 'id' });
+  const { ensureTeamsInStaticTeams } = require('./databaseService');
+  await ensureTeamsInStaticTeams([fixture]);
 }
 
 // ============================================

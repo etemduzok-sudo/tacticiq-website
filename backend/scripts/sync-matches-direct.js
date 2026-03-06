@@ -1,4 +1,4 @@
-﻿const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
@@ -57,7 +57,8 @@ async function syncLeague(league) {
     }, { onConflict: 'api_football_id' });
     if (!error) updated++;
   }
-  
+  const { ensureTeamsInStaticTeams } = require('../services/databaseService');
+  await ensureTeamsInStaticTeams(data.response);
   totalMatches += updated;
   console.log('  âœ… ' + league.name + ': ' + updated + ' maÃ§');
 }

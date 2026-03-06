@@ -35,7 +35,6 @@ import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 import { isNationalTeamMatch } from '../hooks/useFavoriteTeamMatches';
 import { useTranslation } from '../hooks/useTranslation';
 import { matchesDb } from '../services/databaseService';
-import { isMockTestMatch, isMockLive999999 } from '../data/mockTestData';
 // Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le (global)
 // Bu global cache, component remount'larında bile korunur
 const globalCoachCache: Record<number, string> = {};
@@ -48,6 +47,12 @@ import { cardStyles, textStyles, containerStyles } from '../utils/styleHelpers';
 import { translateCountry } from '../utils/countryUtils';
 import { shortenCoachName } from '../utils/coachNameUtils';
 import { getBulkCoach } from '../services/bulkDataService';
+import {
+  MOCK_1H_TWO_LIVE_ENABLED,
+  MOCK_MATCH_IDS,
+  isMock1HCountdownStarted,
+  startMock1HCountdown,
+} from '../data/mockTestData';
 
 const { width } = Dimensions.get('window');
 
@@ -568,6 +573,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     // Geri sayım hesaplama (countdownTicker ile her saniye güncellenir)
     const _ = countdownTicker; // Re-render için kullan
     
+    const currentMatchId = match?.fixture?.id;
+    const isMock1hUpcoming =
+      MOCK_1H_TWO_LIVE_ENABLED &&
+      (currentMatchId === MOCK_MATCH_IDS.MOCK_1H_A || currentMatchId === MOCK_MATCH_IDS.MOCK_1H_B) &&
+      status === 'upcoming' &&
+      !isMock1HCountdownStarted();
+    
     const now = Date.now() / 1000;
     const matchTime = match.fixture.timestamp;
     const timeDiff = matchTime - now;
@@ -590,14 +602,19 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
         daysRemaining = Math.floor(timeDiff / dayInSeconds);
       } else {
         // 24 saatten az kaldıysa geri sayım göster
-        timeLeft = {
-          hours: Math.floor(timeDiff / 3600),
-          minutes: Math.floor((timeDiff % 3600) / 60),
-          seconds: Math.floor(timeDiff % 60),
-        };
+        if (isMock1hUpcoming) {
+          // Mock 1h: Geri sayım "Tamam" ile başlayana kadar sabit 1:00:00
+          timeLeft = { hours: 1, minutes: 0, seconds: 0 };
+        } else {
+          timeLeft = {
+            hours: Math.floor(timeDiff / 3600),
+            minutes: Math.floor((timeDiff % 3600) / 60),
+            seconds: Math.floor(timeDiff % 60),
+          };
+        }
         
         // Renk değişimi: yeşil -> sarı -> turuncu -> kırmızı
-        const hoursLeft = timeDiff / 3600;
+        const hoursLeft = isMock1hUpcoming ? 1 : timeDiff / 3600;
         if (hoursLeft <= 1) {
           countdownColor = '#EF4444'; // Kırmızı - 1 saatten az
         } else if (hoursLeft <= 3) {
@@ -927,6 +944,18 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
                             <Text style={styles.matchCardCountdownUnit}>Saniye</Text>
                           </LinearGradient>
                         </View>
+                        {isMock1hUpcoming ? (
+                          <TouchableOpacity
+                            style={[styles.matchCardMockTamamButton, { backgroundColor: countdownColor }]}
+                            onPress={(e) => {
+                              e?.stopPropagation?.();
+                              startMock1HCountdown();
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.matchCardMockTamamButtonText}>Tamam – Geri sayımı başlat</Text>
+                          </TouchableOpacity>
+                        ) : null}
                       </View>
                     ) : null}
                   </View>
@@ -1102,17 +1131,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
   // ✅ Takımlar yüklenirken filtre uygulama – tüm maçları göster (milli takım kısa süre görünüp sonra hepsinin yüklenmesi yanıp sönmesini önler)
   const skipTeamFilter = teamsLoading;
 
-  // ✅ Canlı maçları filtrele: Hook'tan gelen liveMatches. Mock test maçı (888001) ve mock canlı 999999 her zaman listeye dahil.
+  // ✅ Canlı maçları filtrele – sadece gerçek maçlar (mock kaldırıldı)
   const filteredLiveMatches = React.useMemo(() => {
     const filtered = skipTeamFilter ? liveMatches : filterMatchesByTeam(liveMatches, selectedTeamIds);
-    const mockLive = liveMatches.filter((m) => isMockTestMatch(m.fixture?.id ?? 0) || isMockLive999999(m.fixture?.id ?? 0));
-    const merged = [...mockLive, ...filtered];
-    const uniqueLive = merged.reduce((acc: any[], match) => {
-      const fixtureId = match.fixture?.id;
-      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) acc.push(match);
-      return acc;
-    }, []);
-    return uniqueLive.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const ts = (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0);
       if (ts !== 0) return ts;
       return (isNationalTeamMatch(a) ? 1 : 0) - (isNationalTeamMatch(b) ? 1 : 0);
@@ -1120,20 +1142,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
   }, [liveMatches, selectedTeamIds, filterMatchesByTeam, skipTeamFilter]);
 
   const filteredUpcomingMatches = React.useMemo(() => {
-    // ✅ Mock yaklaşan maçlar (TEST_1H vb.) her zaman listeye dahil – canlı mock gibi
-    const mockUpcoming = allUpcomingMatches.filter((m) => isMockTestMatch(m.fixture?.id ?? 0));
     const filtered = skipTeamFilter ? allUpcomingMatches : filterMatchesByTeam(allUpcomingMatches, selectedTeamIds);
-    const merged = [...mockUpcoming, ...filtered];
-    
-    // ✅ Duplicate fixture ID'leri kaldır (canlı maçları da hariç tut)
     const liveIds = new Set(filteredLiveMatches.map(m => m.fixture?.id));
-    const uniqueMatches = merged.reduce((acc: any[], match) => {
+    const uniqueMatches = filtered.filter((match) => {
       const fixtureId = match.fixture?.id;
-      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId) && !liveIds.has(fixtureId)) {
-        acc.push(match);
-      }
-      return acc;
-    }, []);
+      return fixtureId && !liveIds.has(fixtureId);
+    });
     
     // Tarih sırasına göre sırala (en yakın en üstte); aynı tarihte kulüp maçları milli takımdan önce
     return uniqueMatches.sort((a, b) => {
@@ -3712,6 +3726,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.dark.warning,
     marginHorizontal: 1,
+  },
+  matchCardMockTamamButton: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  matchCardMockTamamButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: BRAND.white,
   },
   matchCardFinishedContainer: {
     alignItems: 'center',

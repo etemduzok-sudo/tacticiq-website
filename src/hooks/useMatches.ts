@@ -4,7 +4,6 @@ import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
 import { Match, ApiResponse } from '../types/match.types';
 import { logger } from '../utils/logger';
-import { getMockLiveMatch999999 } from '../data/mockTestData';
 
 interface UseMatchesResult {
   matches: Match[];
@@ -272,17 +271,6 @@ export function useMatchDetails(matchId: number) {
         return;
       }
 
-      // ✅ Mock maç (999999): API çağrısı yapma, anında mock veri set et (uygulama takılmasın)
-      if (matchId === 999999) {
-        logger.info(`🔄 Mock match 999999 – using local data (no API)`, { matchId }, 'MATCH_DETAILS');
-        setMatch(getMockLiveMatch999999());
-        setLineups(buildMockLineups());
-        setStatistics(null);
-        setEvents([]);
-        setLoading(false);
-        return;
-      }
-      
       logger.info(`🔄 ${isRefresh ? 'Refreshing' : 'Fetching'} match details for ${matchId}...`, { matchId, isRefresh }, 'MATCH_DETAILS');
 
       // ✅ Timeout wrapper for each API call (10 seconds max)
@@ -349,7 +337,7 @@ export function useMatchDetails(matchId: number) {
 
   // ✅ Canlı maçlar için periyodik güncelleme (her 30 saniye)
   useEffect(() => {
-    if (!matchId || matchId <= 0 || matchId === 999999) return;
+    if (!matchId || matchId <= 0) return;
     
     // Sadece canlı veya potansiyel canlı maçlarda güncelle
     if (!isMatchLive && !isPotentiallyLive) return;

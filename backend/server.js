@@ -13,11 +13,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 // ✅ SECURITY: Import auth middleware for protected endpoints
 const { authenticateApiKey } = require('./middleware/auth');
 
-// 📊 Player Ratings Scheduler (Haftalık güncelleme)
-const playerRatingsScheduler = require('./services/playerRatingsScheduler');
-
-// 🔴 Live Match Service (Canlı maç senkronizasyonu)
-const liveMatchService = require('./services/liveMatchService');
+// 📊 Player Ratings / Live Match → sadece arka plan açıksa yükle (lazy; çökme riski azalır)
 
 // 🛡️ Global Error Handlers - Backend'in sürekli durmasını engeller
 process.on('uncaughtException', (error) => {
@@ -309,10 +305,11 @@ app.get('/api/system-status', (req, res) => {
     const staticTeamsScheduler = require('./services/staticTeamsScheduler');
     const snapshotService = require('./services/leaderboardSnapshotService');
     
-    // Player Ratings Scheduler durumu
+    // Player Ratings Scheduler durumu (lazy load)
     let playerRatingsStatus = null;
     try {
       if (process.env.RUN_PLAYER_RATINGS_JOB === 'true') {
+        const playerRatingsScheduler = require('./services/playerRatingsScheduler');
         playerRatingsStatus = playerRatingsScheduler.getSchedulerStatus();
       }
     } catch (err) {
@@ -779,15 +776,20 @@ app.post('/api/admin/login-notify', authenticateApiKey, async (req, res) => {
 });
 
 app.get('/api/admin/player-ratings/status', authenticateApiKey, (req, res) => {
-  const status = playerRatingsScheduler.getSchedulerStatus();
-  res.json({ success: true, ...status });
+  try {
+    const playerRatingsScheduler = require('./services/playerRatingsScheduler');
+    const status = playerRatingsScheduler.getSchedulerStatus();
+    res.json({ success: true, ...status });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // POST /api/admin/player-ratings/update - Manuel güncelleme tetikle
 app.post('/api/admin/player-ratings/update', authenticateApiKey, async (req, res) => {
   const { leagueId } = req.body;
-  
   try {
+    const playerRatingsScheduler = require('./services/playerRatingsScheduler');
     const result = await playerRatingsScheduler.triggerManualUpdate(leagueId || null);
     res.json(result);
   } catch (error) {
@@ -898,136 +900,155 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('============================================================\n');
   
   // Servisleri async başlat (port bind edildikten sonra)
+  // DISABLE_BACKGROUND_JOBS=true → API kotasını korumak için tüm arka plan scriptleri ÇALIŞMAZ
+  const backgroundJobsDisabled = process.env.DISABLE_BACKGROUND_JOBS === 'true';
   setImmediate(() => {
-    console.log('\n');
-    console.log('╔════════════════════════════════════════════════════════════╗');
-    console.log('║           🚀 TACTICIQ BACKEND STARTED 🚀                   ║');
-    console.log('╠════════════════════════════════════════════════════════════╣');
-    console.log(`║ Port: ${PORT}                                                  ║`);
-    console.log(`║ Health: http://localhost:${PORT}/health                       ║`);
-    console.log('╚════════════════════════════════════════════════════════════╝');
-    
-    // ============================================
-    // 0. AGGRESSIVE CACHE (Render: listen sonrası, health check önceliği)
-    // ============================================
     try {
-      const aggressiveCacheService = require('./services/aggressiveCacheService');
-      aggressiveCacheService.startAggressiveCaching();
-      console.log(`🚀 Aggressive cache service started`);
-    } catch (error) {
-      console.error('❌ Failed to start aggressive cache service:', error.message);
-    }
-
-    // ============================================
-    // 1. WORLDWIDE SYNC SERVICE (Sabit 12s)
-    // ============================================
-    try {
-      const smartSyncService = require('./services/smartSyncService');
-      smartSyncService.startSync();
-      console.log(`🌍 Worldwide sync started (fixed 12s interval)`);
-    } catch (error) {
-      console.error('❌ Failed to start smart sync service:', error.message);
-    }
-    
-    // ============================================
-    // 2. STATIC TEAMS SCHEDULER (Günde 2x)
-    // ============================================
-    try {
-      const staticTeamsScheduler = require('./services/staticTeamsScheduler');
-      staticTeamsScheduler.startScheduler();
-      console.log(`🏆 Static teams scheduler started (daily at 08:00 & 20:00 UTC)`);
-    } catch (error) {
-      console.error('❌ Failed to start static teams scheduler:', error.message);
-    }
-
-    // ============================================
-    // 2.5 KADRO SYNC (Günde 1 kez - API kotası aşılmaz)
-    // ============================================
-    try {
-      const squadSyncService = require('./services/squadSyncService');
-      squadSyncService.startDailySquadSync();
-      console.log(`👥 Kadro sync started (every 24h, app reads from DB only)`);
-    } catch (error) {
-      console.error('❌ Failed to start squad sync:', error.message);
-    }
-    
-    // ============================================
-    // 3. LEADERBOARD SNAPSHOT SERVICE
-    // ============================================
-    try {
-      const snapshotService = require('./services/leaderboardSnapshotService');
-      snapshotService.startSnapshotService();
-      console.log(`📸 Leaderboard snapshot service started`);
-    } catch (error) {
-      console.error('❌ Failed to start snapshot service:', error.message);
-    }
-    
-    // ============================================
-    // 4. MONITORING SERVICE
-    // ============================================
-    try {
-      const monitoringService = require('./services/monitoringService');
-      setTimeout(() => {
-        try {
-          monitoringService.startMonitoring();
-          console.log(`🔍 Monitoring service started`);
-        } catch (error) {
-          console.error('❌ Failed to start monitoring service:', error.message);
-        }
-      }, 10000);
-    } catch (error) {
-      console.warn('⚠️ Monitoring service could not be loaded:', error.message);
-    }
-    
-    // ============================================
-    // 5. PLAYER RATINGS SCHEDULER
-    // ============================================
-    if (process.env.RUN_PLAYER_RATINGS_JOB === 'true') {
-      try {
-        playerRatingsScheduler.startScheduler();
-        console.log(`📊 Player ratings scheduler started`);
-      } catch (error) {
-        console.warn('⚠️ Player ratings scheduler could not be started:', error.message);
+      console.log('\n');
+      console.log('╔════════════════════════════════════════════════════════════╗');
+      console.log('║           🚀 TACTICIQ BACKEND STARTED 🚀                   ║');
+      console.log('╠════════════════════════════════════════════════════════════╣');
+      console.log(`║ Port: ${PORT}                                                  ║`);
+      console.log(`║ Health: http://localhost:${PORT}/health                       ║`);
+      console.log('╚════════════════════════════════════════════════════════════╝');
+      if (backgroundJobsDisabled) {
+        console.log('\n⏸️  DISABLE_BACKGROUND_JOBS=true → Tüm arka plan scriptleri KAPALI (API kotası korunur). Açmak için .env\'de kaldırın.\n');
+        return;
       }
-    } else {
-      console.log('⏭️  Player ratings scheduler skipped (RUN_PLAYER_RATINGS_JOB not set)');
-    }
-    
-    // ============================================
-    // 6. LIVE MATCH SERVICE (15s polling - canlı maç durumu senkronizasyonu)
-    // ============================================
-    try {
-      liveMatchService.startPolling();
-      console.log(`🔴 Live match polling started (15s interval)`);
-    } catch (error) {
-      console.error('❌ Failed to start live match polling:', error.message);
-    }
 
-    // ============================================
-    // 7. DB GÜNCELLEME RAPORU (5 dk'da bir - lig, takım, koç, kadro, rating, yetenek)
-    // ============================================
-    try {
-      const dbStatusReportService = require('./services/dbStatusReportService');
-      dbStatusReportService.startPeriodicReport(5 * 60 * 1000);
-    } catch (error) {
-      console.warn('⚠️ DB rapor servisi başlatılamadı:', error.message);
+      // ============================================
+      // 0. AGGRESSIVE CACHE (Render: listen sonrası, health check önceliği)
+      // ============================================
+      try {
+        const aggressiveCacheService = require('./services/aggressiveCacheService');
+        aggressiveCacheService.startAggressiveCaching();
+        console.log(`🚀 Aggressive cache service started`);
+      } catch (error) {
+        console.error('❌ Failed to start aggressive cache service:', error.message);
+      }
+
+      // ============================================
+      // 1. WORLDWIDE SYNC SERVICE (Sabit 12s)
+      // ============================================
+      try {
+        const smartSyncService = require('./services/smartSyncService');
+        smartSyncService.startSync();
+        console.log(`🌍 Worldwide sync started (fixed 12s interval)`);
+      } catch (error) {
+        console.error('❌ Failed to start smart sync service:', error.message);
+      }
+
+      // ============================================
+      // 2. STATIC TEAMS SCHEDULER (Günde 2x)
+      // ============================================
+      try {
+        const staticTeamsScheduler = require('./services/staticTeamsScheduler');
+        staticTeamsScheduler.startScheduler();
+        console.log(`🏆 Static teams scheduler started (daily at 08:00 & 20:00 UTC)`);
+      } catch (error) {
+        console.error('❌ Failed to start static teams scheduler:', error.message);
+      }
+
+      // ============================================
+      // 2.5 KADRO SYNC (Günde 1 kez - API kotası aşılmaz)
+      // ============================================
+      try {
+        const squadSyncService = require('./services/squadSyncService');
+        squadSyncService.startDailySquadSync();
+        console.log(`👥 Kadro sync started (every 24h, app reads from DB only)`);
+      } catch (error) {
+        console.error('❌ Failed to start squad sync:', error.message);
+      }
+
+      // ============================================
+      // 3. LEADERBOARD SNAPSHOT SERVICE
+      // ============================================
+      try {
+        const snapshotService = require('./services/leaderboardSnapshotService');
+        snapshotService.startSnapshotService();
+        console.log(`📸 Leaderboard snapshot service started`);
+      } catch (error) {
+        console.error('❌ Failed to start snapshot service:', error.message);
+      }
+
+      // ============================================
+      // 4. MONITORING SERVICE
+      // ============================================
+      try {
+        const monitoringService = require('./services/monitoringService');
+        setTimeout(() => {
+          try {
+            monitoringService.startMonitoring();
+            console.log(`🔍 Monitoring service started`);
+          } catch (error) {
+            console.error('❌ Failed to start monitoring service:', error.message);
+          }
+        }, 10000);
+      } catch (error) {
+        console.warn('⚠️ Monitoring service could not be loaded:', error.message);
+      }
+
+      // ============================================
+      // 5. PLAYER RATINGS SCHEDULER (lazy load)
+      // ============================================
+      if (process.env.RUN_PLAYER_RATINGS_JOB === 'true') {
+        try {
+          const playerRatingsScheduler = require('./services/playerRatingsScheduler');
+          playerRatingsScheduler.startScheduler();
+          console.log(`📊 Player ratings scheduler started`);
+        } catch (error) {
+          console.warn('⚠️ Player ratings scheduler could not be started:', error.message);
+        }
+      } else {
+        console.log('⏭️  Player ratings scheduler skipped (RUN_PLAYER_RATINGS_JOB not set)');
+      }
+
+      // ============================================
+      // 6. LIVE MATCH SERVICE (lazy load - 15s polling)
+      // ============================================
+      try {
+        const liveMatchService = require('./services/liveMatchService');
+        liveMatchService.startPolling();
+        console.log(`🔴 Live match polling started (15s interval)`);
+      } catch (error) {
+        console.error('❌ Failed to start live match polling:', error.message);
+      }
+
+      // ============================================
+      // 7. DB GÜNCELLEME RAPORU (5 dk'da bir)
+      // ============================================
+      try {
+        const dbStatusReportService = require('./services/dbStatusReportService');
+        dbStatusReportService.startPeriodicReport(5 * 60 * 1000);
+      } catch (error) {
+        console.warn('⚠️ DB rapor servisi başlatılamadı:', error.message);
+      }
+    } catch (err) {
+      console.error('❌ Startup block error (backend keeps running):', err.message);
+      console.error(err.stack);
     }
   });
   
   // ============================================
   // STARTUP COMPLETE
   // ============================================
-  console.log('\n');
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║           ✅ ALL SERVICES INITIALIZED                      ║');
-  console.log('╠════════════════════════════════════════════════════════════╣');
-  console.log('║ Active Services:                                          ║');
-  console.log('║   • Worldwide Sync (12s) - Live matches & timeline        ║');
-  console.log('║   • Live Match Polling (15s) - Real-time status sync      ║');
-  console.log('║   • Static Teams (2x/day) - Team data updates             ║');
-  console.log('║   • Leaderboard Snapshots - Daily/weekly rankings         ║');
-  console.log('║   • Monitoring - Health checks & alerts                   ║');
-  console.log('║   • Player Ratings (Weekly) - Attributes & ratings        ║');
-  console.log('╚════════════════════════════════════════════════════════════╝');
-  console.log('\n');
+  if (backgroundJobsDisabled) {
+    console.log('╔════════════════════════════════════════════════════════════╗');
+    console.log('║  ⏸️  Arka plan scriptleri KAPALI (DISABLE_BACKGROUND_JOBS) ║');
+    console.log('╚════════════════════════════════════════════════════════════╝\n');
+  } else {
+    console.log('\n');
+    console.log('╔════════════════════════════════════════════════════════════╗');
+    console.log('║           ✅ ALL SERVICES INITIALIZED                      ║');
+    console.log('╠════════════════════════════════════════════════════════════╣');
+    console.log('║ Active Services:                                          ║');
+    console.log('║   • Worldwide Sync (12s) - Live matches & timeline        ║');
+    console.log('║   • Live Match Polling (15s) - Real-time status sync      ║');
+    console.log('║   • Static Teams (2x/day) - Team data updates             ║');
+    console.log('║   • Leaderboard Snapshots - Daily/weekly rankings         ║');
+    console.log('║   • Monitoring - Health checks & alerts                   ║');
+    console.log('║   • Player Ratings (Weekly) - Attributes & ratings        ║');
+    console.log('╚════════════════════════════════════════════════════════════╝');
+    console.log('\n');
+  }
 });

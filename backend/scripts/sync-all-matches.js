@@ -109,7 +109,8 @@ async function updateLeagueMatches(league) {
       
       if (!error) updated++;
     }
-    
+    const { ensureTeamsInStaticTeams } = require('../services/databaseService');
+    await ensureTeamsInStaticTeams(data.response);
     stats.matchesUpdated += updated;
     stats.leaguesProcessed++;
     console.log(`  ✅ ${league.name}: ${updated} maç`);

@@ -22,8 +22,8 @@ const LAST_SNAPSHOT_FILE = path.join(__dirname, '..', 'data', 'db-status-last.js
 const BASELINE_FILE = path.join(__dirname, '..', 'data', 'db-status-baseline.json');
 const API_USAGE_FILE = path.join(__dirname, '..', 'data', 'api-usage-now.json');
 const API_USAGE_SERVER_FILE = path.join(__dirname, '..', 'data', 'api-usage-from-server.json');
-const INTERVAL_MS = 1 * 60 * 1000; // 1 dakika (rating artışını takip için)
-const MAX_REPORT_BLOCKS = 100;     // Son 100 blok (~8 saat) tutulur
+const INTERVAL_MS = 5 * 60 * 1000; // 5 dakikada bir
+const MAX_REPORT_BLOCKS = 100;     // Son 100 blok tutulur
 
 function ensureDataDir() {
   const dir = path.dirname(REPORT_FILE);
@@ -87,7 +87,7 @@ function estimateHoursTo100(stats) {
 
 function appendReportBlock(newBlockText) {
   ensureDataDir();
-  const separator = '========== DB GUNCELLEME RAPORU (1 dk) ==========';
+  const separator = '========== DB GUNCELLEME RAPORU (5 dk) ==========';
   let existing = '';
   if (fs.existsSync(REPORT_FILE)) {
     existing = fs.readFileSync(REPORT_FILE, 'utf8');
@@ -304,7 +304,7 @@ async function runReport() {
 
 async function main() {
   ensureDataDir();
-  console.log('DB raporu 1 dakikada bir yazilacak. Rapor dosyasi: ' + REPORT_FILE);
+  console.log('DB raporu 5 dakikada bir yazilacak. Rapor dosyasi: ' + REPORT_FILE);
   console.log('Ilk rapor simdi aliniyor...\n');
 
   await runReport();

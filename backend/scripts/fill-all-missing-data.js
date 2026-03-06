@@ -410,7 +410,8 @@ async function fillMatches() {
         
         matchesUpdated++;
       }
-      
+      const { ensureTeamsInStaticTeams } = require('../services/databaseService');
+      await ensureTeamsInStaticTeams(fixtures);
       console.log(`   ${dateStr}: ${fixtures.length} maç`);
     } catch (e) {
       // Skip

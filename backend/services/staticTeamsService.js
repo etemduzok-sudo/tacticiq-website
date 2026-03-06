@@ -15,6 +15,14 @@ const axios = require('axios');
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// API-Football takım araması – DB'de bulunamayan takımlar (D. La Serena vb.) için
+let footballApi;
+try {
+  footballApi = require('./footballApi');
+} catch (e) {
+  footballApi = null;
+}
+
 // Lig kategorileri için import
 const {
   getAllTrackedLeagues,
@@ -54,6 +62,7 @@ function getLeagueTypeFromId(leagueId) {
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 5000, // DB yoksa hızlı hata → API fallback
 });
 
 // API-Football Config
@@ -462,15 +471,22 @@ const FALLBACK_TEAMS = [
   // Eredivisie
   { api_football_id: 201, name: 'AZ Alkmaar', country: 'Netherlands', league: 'Eredivisie', league_type: 'domestic_top', team_type: 'club', colors: ['#E30613', '#FFFFFF'], colors_primary: '#E30613', colors_secondary: '#FFFFFF' },
   { api_football_id: 209, name: 'Feyenoord', country: 'Netherlands', league: 'Eredivisie', league_type: 'domestic_top', team_type: 'club', colors: ['#E30613', '#FFFFFF'], colors_primary: '#E30613', colors_secondary: '#FFFFFF' },
+  // Mock test takımları (1 saat sonra başlayan simülasyon maçları için – favori ekleyince maçlar listelenir)
+  { api_football_id: 9011, name: 'Mock 1', country: 'TR', league: 'Mock Demo Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#1FA2A6', '#0F2A24'], colors_primary: '#1FA2A6', colors_secondary: '#0F2A24' },
+  { api_football_id: 9012, name: 'Mock 2', country: 'TR', league: 'Mock Demo Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#F97316', '#EA580C'], colors_primary: '#F97316', colors_secondary: '#EA580C' },
+  { api_football_id: 9021, name: 'Mock Takım A', country: 'TR', league: 'Mock Test Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#8B5CF6', '#6D28D9'], colors_primary: '#8B5CF6', colors_secondary: '#6D28D9' },
+  { api_football_id: 9022, name: 'Mock Takım B', country: 'TR', league: 'Mock Test Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#10B981', '#059669'], colors_primary: '#10B981', colors_secondary: '#059669' },
 ];
 
 /**
  * Takım ara (Hızlı erişim için)
- * DB varsa DB'den, yoksa fallback listesinden döner
+ * 1) static_teams 2) teams tablosu (maçlarda gördüğümüz takımlar).
+ * Maç sync edilen her ligdeki takımlar, static full sync beklemeden favori aramada çıkar.
  */
 async function searchTeams(query, type = null) {
   const searchQuery = `%${query.toLowerCase()}%`;
-  
+  const hasDb = !!(process.env.DATABASE_URL || process.env.SUPABASE_DB_URL);
+
   // Önce view'ı dene, yoksa direkt tabloyu kullan
   let sql = `
     SELECT * FROM static_teams
@@ -492,15 +508,145 @@ async function searchTeams(query, type = null) {
   sql += ` ORDER BY CASE WHEN LOWER(name) LIKE $${prefixParam} || '%' THEN 0 WHEN LOWER(name) LIKE $1 THEN 1 ELSE 2 END, name LIMIT 80`;
   
   try {
+    if (!hasDb) throw new Error('No DATABASE_URL/SUPABASE_DB_URL - using fallback');
     const result = await pool.query(sql, params);
-    return result.rows;
+    let rows = result.rows || [];
+    const staticIds = new Set(rows.map((r) => r.api_football_id));
+    const lowerQuery = query.toLowerCase();
+
+    // 2) teams tablosu – maçlarda görünen takımlar (static sync beklemeden aranabilsin)
+    try {
+      let teamsSql = `SELECT id, name, country, is_national FROM teams WHERE LOWER(name) LIKE $1`;
+      const teamsParams = [searchQuery];
+      if (type === 'national') teamsSql += ` AND (is_national = true OR is_national IS NULL)`;
+      else if (type === 'club') teamsSql += ` AND (is_national = false OR is_national IS NULL)`;
+      teamsSql += ` LIMIT 60`;
+      const teamsResult = await pool.query(teamsSql, teamsParams);
+      for (const t of teamsResult.rows || []) {
+        if (staticIds.has(t.id)) continue;
+        staticIds.add(t.id);
+        rows.push({
+          api_football_id: t.id,
+          name: t.name,
+          country: t.country || 'Unknown',
+          league: null,
+          league_type: 'domestic_top',
+          team_type: t.is_national ? 'national' : 'club',
+          colors_primary: '#1E40AF',
+          colors_secondary: '#FFFFFF',
+          colors: ['#1E40AF', '#FFFFFF'],
+          flag_url: null,
+        });
+      }
+    } catch (e) { /* teams tablosu yoksa atla */ }
+
+    rows.sort((a, b) => {
+      const an = (a.name || '').toLowerCase();
+      const bn = (b.name || '').toLowerCase();
+      const aPrefix = an.startsWith(lowerQuery) ? 0 : an.includes(lowerQuery) ? 1 : 2;
+      const bPrefix = bn.startsWith(lowerQuery) ? 0 : bn.includes(lowerQuery) ? 1 : 2;
+      if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+      return an.localeCompare(bn);
+    });
+
+    // DB'de hiç sonuç yoksa API-Football'dan ara (D. La Serena, Union La Calera vb. tüm ligler)
+    if (rows.length === 0 && query.length >= 2 && footballApi && footballApi.searchTeams) {
+      try {
+        const apiData = await footballApi.searchTeams(query);
+        const list = apiData?.response || [];
+        const lower = query.toLowerCase().replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+        for (const item of list) {
+          const t = item.team || item;
+          const id = t.id;
+          const name = (t.name || '').trim();
+          if (!id || !name) continue;
+          const isNational = (t.national || item.national) === true || (t.type || '').toLowerCase() === 'national';
+          if (type === 'national' && !isNational) continue;
+          if (type === 'club' && isNational) continue;
+          // Esnek eşleşme: "d. la serena" -> "deportes la serena", "la serena" vb.
+          const nameNorm = name.toLowerCase().replace(/\./g, ' ').replace(/\s+/g, ' ');
+          const queryWords = lower.split(/\s+/).filter(Boolean);
+          const match = !lower || queryWords.every(w => nameNorm.includes(w));
+          if (!match) continue;
+          rows.push({
+            api_football_id: id,
+            name,
+            country: t.country || 'Unknown',
+            league: null,
+            league_type: 'domestic_top',
+            team_type: isNational ? 'national' : 'club',
+            colors_primary: '#1E40AF',
+            colors_secondary: '#FFFFFF',
+            colors: ['#1E40AF', '#FFFFFF'],
+            flag_url: null,
+          });
+        }
+        rows.sort((a, b) => {
+          const an = (a.name || '').toLowerCase();
+          const bn = (b.name || '').toLowerCase();
+          const aPrefix = an.startsWith(lower) ? 0 : 1;
+          const bPrefix = bn.startsWith(lower) ? 0 : 1;
+          if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+          return an.localeCompare(bn);
+        });
+      } catch (apiErr) {
+        console.warn('API-Football team search fallback failed:', apiErr.message || apiErr);
+      }
+    }
+
+    return rows.slice(0, 80);
   } catch (error) {
     const errorMessage = error.message || String(error);
     console.warn('⚠️  Static teams DB error, using fallback:', errorMessage.substring(0, 100));
-    
+
     const { filterAndSortTeams } = require('../utils/teamFilter');
     let filtered = filterAndSortTeams(FALLBACK_TEAMS, query, t => t.name);
     if (type) filtered = filtered.filter(team => team.team_type === type);
+
+    // DB hata verdiğinde fallback'ta da sonuç yoksa API-Football'dan ara (D. La Serena vb.)
+    if (filtered.length === 0 && query.length >= 2 && footballApi && footballApi.searchTeams) {
+      try {
+        const apiData = await footballApi.searchTeams(query);
+        const list = apiData?.response || [];
+        const lower = query.toLowerCase().replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+        for (const item of list) {
+          const t = item.team || item;
+          const id = t.id;
+          const name = (t.name || '').trim();
+          if (!id || !name) continue;
+          const isNational = (t.national || item.national) === true || (t.type || '').toLowerCase() === 'national';
+          if (type === 'national' && !isNational) continue;
+          if (type === 'club' && isNational) continue;
+          const nameNorm = name.toLowerCase().replace(/\./g, ' ').replace(/\s+/g, ' ');
+          const queryWords = lower.split(/\s+/).filter(Boolean);
+          const match = !lower || queryWords.every(w => nameNorm.includes(w));
+          if (!match) continue;
+          filtered.push({
+            api_football_id: id,
+            name,
+            country: t.country || 'Unknown',
+            league: null,
+            league_type: 'domestic_top',
+            team_type: isNational ? 'national' : 'club',
+            colors_primary: '#1E40AF',
+            colors_secondary: '#FFFFFF',
+            colors: ['#1E40AF', '#FFFFFF'],
+            flag_url: null,
+          });
+        }
+        filtered.sort((a, b) => {
+          const an = (a.name || '').toLowerCase();
+          const bn = (b.name || '').toLowerCase();
+          const aPrefix = an.startsWith(lower) ? 0 : 1;
+          const bPrefix = bn.startsWith(lower) ? 0 : 1;
+          if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+          return an.localeCompare(bn);
+        });
+      } catch (apiErr) {
+        console.warn('API-Football team search fallback (catch) failed:', apiErr.message || apiErr);
+      }
+    }
+
     return filtered.slice(0, 50);
   }
 }

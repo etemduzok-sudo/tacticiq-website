@@ -147,7 +147,8 @@ async function syncLeagueMatches(league) {
       const { error } = await supabase.from('matches').upsert(record, { onConflict: 'id' });
       if (!error) count++;
     }
-    
+    const { ensureTeamsInStaticTeams } = require('../services/databaseService');
+    await ensureTeamsInStaticTeams(data.response);
     updated.matches += count;
     console.log(`  ✅ ${league.name}: ${count}`);
     return count;

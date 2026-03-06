@@ -34,7 +34,7 @@ import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { ANALYSIS_FOCUSES, type AnalysisFocusType } from '../AnalysisFocusModal';
 import { FOCUS_CATEGORY_MAPPING, doesFocusIncludePlayerPredictions } from '../../constants/predictionConstants';
-import { isMockTestMatch, isMockLive999999, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId, getMockCommunitySignals, getMockLineup, getMockLineup999999, getMockCommunityDataForLivePitch } from '../../data/mockTestData';
+import { isMockTestMatch, isMockLive999999, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId, getMockCommunitySignals, getMockLineup, getMockLineup999999, getMockCommunityDataForLivePitch, USE_MOCK_COMMUNITY_HYBRID } from '../../data/mockTestData';
 import { formatPlayerDisplayName, formatPlayerSurname } from '../../utils/playerNameUtils';
 import PlayerPredictionModal from './PlayerPredictionModal';
 import { 
@@ -1244,10 +1244,31 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     return () => clearInterval(interval);
   }, [matchId, perfTeamIdForAvg, isMatchLive, isMatchFinished]);
 
-  // ✅ Mock test maçı: topluluk verisi (oran 0–1) + gol/asist 1-2-3+ dağılımı (kişi sayısı) – kart ve popup doğru görünsün
+  // ✅ Hibrit: Gerçek maçlarda mock topluluk verisi. Mock maç yok artık; USE_MOCK_COMMUNITY_HYBRID ile tüm maçlarda mock doldurulur.
   useEffect(() => {
     const matchIdNum = matchId ? Number(matchId) : null;
-    if (!matchIdNum || !isMockTestMatch(matchIdNum)) return;
+    if (!matchIdNum) return;
+    // Eski mock maç davranışı kapatıldı; hibrit modda kadrodaki her oyuncu için mock topluluk ver
+    if (USE_MOCK_COMMUNITY_HYBRID && lineups && Array.isArray(lineups)) {
+      const next: Record<number, ReturnType<typeof getMockCommunityDataForPlayer>> = {};
+      lineups.forEach((slot: any) => {
+        const startXI = slot?.startXI ?? [];
+        const subs = slot?.substitutes ?? [];
+        [...startXI, ...subs].forEach((item: any) => {
+          const p = item?.player ?? item;
+          if (p?.id != null) {
+            const data = getMockCommunityDataForPlayer(p);
+            next[Number(p.id)] = { ...data, totalPredictions: data.totalPredictions || 100 };
+          }
+        });
+      });
+      if (Object.keys(next).length > 0) {
+        setCommunityPredictions(next);
+        setCommunityTeamPerformanceAvg(6.2);
+      }
+      return;
+    }
+    if (!isMockTestMatch(matchIdNum)) return;
     const total = 980;
     const toRate = (n: number) => n / 100;
     const spread = (count: number) => {
@@ -1297,7 +1318,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       112: row(12, 6, 11, 0, 0, 30, 4),
     });
     setCommunityTeamPerformanceAvg(6.2);
-  }, [matchId]);
+  }, [matchId, lineups]);
   
   // ✅ Tahmin kategorisi için timing badge bilgisi al
   const getTimingInfo = React.useCallback((category: string) => {
@@ -3359,7 +3380,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               style={[styles.playerCard, (normalizeRatingTo100(player.rating) ?? 0) >= 85 && styles.playerCardElite, (player.position === 'GK' || (player.position && String(player.position).toUpperCase() === 'GK')) && styles.playerCardGK]}
                               onPress={() => {
                                 if (!communityDataVisible) return;
-                                const data = communityPredictions[player.id] || (matchIdNum && isMockTestMatch(matchIdNum) ? getMockCommunityDataForPlayer(player) : EMPTY_COMMUNITY_DATA);
+                                const data = communityPredictions[player.id] || (USE_MOCK_COMMUNITY_HYBRID ? getMockCommunityDataForPlayer(player) : EMPTY_COMMUNITY_DATA);
                                 const squadPlayers = threeFieldData.communitySquad.players.slice(0, 11);
                                 const others = squadPlayers.filter((p: any) => Number(p?.id) !== Number(player?.id));
                                 const totalUsers = data.totalPredictions || 0;
@@ -3615,7 +3636,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         ];
                         return threeFieldData.actualSquad.players.slice(0, 11).map((player: any, index: number) => {
                           const pos = positions[index] || { x: 50, y: 50 };
-                          const community = communityPredictions[player.id] ?? getMockCommunityDataForLivePitch(player);
+                          const community = communityPredictions[player.id] ?? getMockCommunityDataForLivePitch(player, matchIdNum ?? undefined);
                           const totalVotes = community ? Math.max(1, community.totalPredictions) : 1;
                           const playerReaction = normalizeLiveReaction(liveReactions[player.id]);
                           const userVoted = hasAnyReaction(playerReaction);

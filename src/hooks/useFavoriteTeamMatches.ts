@@ -6,7 +6,10 @@ import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
 import { logger } from '../utils/logger';
 import { getAllBulkMatches, isBulkDataValid } from '../services/bulkDataService';
-import { MOCK_TEST_ENABLED, MOCK_LIVE_999999_ENABLED, getMockMatches, getMockLiveMatch999999, isMockTestMatch } from '../data/mockTestData';
+import { MOCK_1H_TWO_LIVE_ENABLED, getMock1HLiveMatches } from '../data/mockTestData';
+
+/** Mock maçların takım ID'leri – favorilerde bunlardan biri varsa mock maçlar listelenir. */
+const MOCK_1H_TEAM_IDS = [9011, 9012, 9021, 9022];
 
 // Cache keys
 const CACHE_KEY = 'tacticiq-matches-cache';
@@ -984,41 +987,41 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     return () => clearInterval(t);
   }, [hasLoadedOnce, favoriteTeamIdsString]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ✅ Mock canlı simülasyondaysa canlı listeye, değilse yaklaşana ekle (ana sayfada görünsün)
-  // ✅ Mock 999999: canlı listede göster (topluluk verisi var, kullanıcı tahmini yok)
-  const liveWithMock = useMemo(() => {
-    let result = liveMatches;
-    if (MOCK_TEST_ENABLED) {
-      const mock = getMockMatches();
-      const liveMock = (mock || []).filter((m) => m?.fixture?.status?.short && LIVE_STATUSES.includes(m.fixture.status.short));
-      if (liveMock.length) {
-        const withoutMock = result.filter((m) => !isMockTestMatch(m.fixture?.id ?? 0));
-        result = [...liveMock, ...withoutMock];
-      }
-    }
-    if (MOCK_LIVE_999999_ENABLED) {
-      const has999999 = result.some((m) => (m.fixture?.id ?? (m as any).id) === 999999);
-      if (!has999999) result = [getMockLiveMatch999999(), ...result];
-    }
-    return result;
-  }, [liveMatches]);
+  // 1 saat sonra başlayan 2 mock maç: geri sayım ve canlı ilerleme için her saniye güncelle
+  const [countdownTick, setCountdownTick] = useState(0);
+  useEffect(() => {
+    if (!MOCK_1H_TWO_LIVE_ENABLED) return;
+    const interval = setInterval(() => setCountdownTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const upcomingWithMock = useMemo(() => {
-    if (!MOCK_TEST_ENABLED) return upcomingMatches;
-    const mock = getMockMatches();
-    const upcomingMock = (mock || []).filter((m) => !m?.fixture?.status?.short || !LIVE_STATUSES.includes(m.fixture.status.short));
-    if (!upcomingMock.length) return upcomingMatches;
-    const withoutMock = upcomingMatches.filter((m) => !isMockTestMatch(m.fixture?.id ?? 0));
-    return [...upcomingMock, ...withoutMock];
-  }, [upcomingMatches]);
+  const merged = useMemo(() => {
+    if (!MOCK_1H_TWO_LIVE_ENABLED) {
+      return { pastMatches, liveMatches, upcomingMatches };
+    }
+    const favIds = favoriteTeams?.map((t) => Number(t.id)).filter((n) => !Number.isNaN(n)) ?? [];
+    const hasMockTeam = favIds.some((id) => MOCK_1H_TEAM_IDS.includes(id));
+    if (!hasMockTeam) {
+      return { pastMatches, liveMatches, upcomingMatches };
+    }
+    const mockList = getMock1HLiveMatches() as Match[];
+    const mockPast = mockList.filter((m) => m.fixture?.status?.short === 'FT');
+    const mockLive = mockList.filter((m) => ['1H', '2H', 'HT'].includes(m.fixture?.status?.short ?? ''));
+    const mockUpcoming = mockList.filter((m) => m.fixture?.status?.short === 'NS');
+    return {
+      pastMatches: [...pastMatches, ...mockPast],
+      liveMatches: [...mockLive, ...liveMatches],
+      upcomingMatches: [...mockUpcoming, ...upcomingMatches],
+    };
+  }, [pastMatches, liveMatches, upcomingMatches, countdownTick, favoriteTeams]);
 
   return {
-    pastMatches,
-    liveMatches: liveWithMock,
-    upcomingMatches: upcomingWithMock,
+    pastMatches: merged.pastMatches,
+    liveMatches: merged.liveMatches,
+    upcomingMatches: merged.upcomingMatches,
     loading,
     error,
     refetch: fetchMatches,
-    hasLoadedOnce, // Return flag to prevent flickering
+    hasLoadedOnce,
   };
 }
