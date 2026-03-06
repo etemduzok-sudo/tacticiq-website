@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Supabase Configuration
 // Environment variables'ı kontrol et, yoksa fallback kullan
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://jxdgiskusjljlpzvrzau.supabase.co';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tacticiq.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4ZGdpc2t1c2psamxwenZyemF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4MTQxMDUsImV4cCI6MjA4MzM5MDEwNX0.8OHlUbt-xEs5ONH3D6cW-5eeX50kPb7kmRv-LJfjBaU';
 
 // API Key validation

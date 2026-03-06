@@ -4,7 +4,7 @@
 const fetch = require('node-fetch');
 
 const API_BASE_URL = 'http://localhost:3000/api';
-const SUPABASE_URL = 'https://jxdgiskusjljlpzvrzau.supabase.co';
+const SUPABASE_URL = 'https://tacticiq.supabase.co';
 
 async function checkBackend() {
   try {

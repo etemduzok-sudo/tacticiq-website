@@ -3,10 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Supabase Configuration
-// Project: jxdgiskusjljlpzvrzau
-// Dashboard: https://supabase.com/dashboard/project/jxdgiskusjljlpzvrzau
-const SUPABASE_URL = 'https://jxdgiskusjljlpzvrzau.supabase.co';
+// Supabase Configuration (vanity subdomain)
+// Project: jxdgiskusjljlpzvrzau | Dashboard: https://supabase.com/dashboard/project/jxdgiskusjljlpzvrzau
+const SUPABASE_URL = 'https://tacticiq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Qjep7tf9H98yk5UBgcPtVw_x4iQUixY';
 
 // ✅ Web'de session'ın kesin kalıcı olması için localStorage adapter (önceki davranış)

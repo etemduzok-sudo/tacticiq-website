@@ -6,7 +6,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Supabase client
 const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://jxdgiskusjljlpzvrzau.supabase.co',
+  process.env.SUPABASE_URL || 'https://tacticiq.supabase.co',
   process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4ZGdpc2t1c2psamxwenZyemF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3NTYzNTIsImV4cCI6MjA1MjMzMjM1Mn0.W4Tv6C6H_xr9T_UdUY3LgZPLMRJY1SJhvuPmw9dXYkk'
 );
 

@@ -109,7 +109,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   
   // ✅ İlk 11 popup'ı gösterildi mi? (sekme değişse bile korunur)
   const [startingXIPopupShown, setStartingXIPopupShown] = useState(false);
-  
+  // ✅ Kadro/tahmin bileşenlerini yeniden mount etmek için (reset vb.)
+  const [squadAndPredictionResetKey, setSquadAndPredictionResetKey] = useState(0);
+
   // ✅ Maç sonu popup'ı - sonuçları, puanları ve rozetleri gösterir
   const [showMatchEndPopup, setShowMatchEndPopup] = useState(false);
   const [matchEndPopupShown, setMatchEndPopupShown] = useState(false); // Popup gösterildi mi?

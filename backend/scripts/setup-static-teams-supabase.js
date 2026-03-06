@@ -11,7 +11,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // Supabase credentials
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jxdgiskusjljlpzvrzau.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://tacticiq.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 
 if (!SUPABASE_SERVICE_KEY) {

@@ -3,7 +3,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const SUPABASE_URL = 'https://jxdgiskusjljlpzvrzau.supabase.co';
+const SUPABASE_URL = 'https://tacticiq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_FBjrFxJXCZYGW6UXWueORQ_8WZf8W9H';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

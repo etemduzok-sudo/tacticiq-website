@@ -7056,6 +7056,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               </View>
             </View>
           </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
       )}
 

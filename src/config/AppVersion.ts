@@ -41,7 +41,7 @@ export const API_CONFIG = {
   
   // Supabase
   supabase: {
-    url: 'https://jxdgiskusjljlpzvrzau.supabase.co',
+    url: 'https://tacticiq.supabase.co',
     anonKey: 'sb_publishable_Qjep7tf9H98yk5UBgcPtVw_x4iQUixY',
   },
   
