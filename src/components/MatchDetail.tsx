@@ -175,7 +175,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             } catch (_) {}
           }
         }
-        setHasPrediction(has);
+        // ✅ setHasPrediction(has) aşağıda Supabase kontrolünden sonra yapılıyor (liste-detay senkron)
         // ✅ İki favori maçta da hasViewedCommunityData oku (her iki takımın tahmin kaydından)
         let viewedCommunity = false;
         if (raw1) {
@@ -211,6 +211,23 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           } catch (_) {}
         }
         setPredictionLocked(locked);
+        // ✅ Liste ile senkron: Tahmin sadece Supabase'de varsa (başka cihazdan) liste sarı gösterir; detay da aynı kaynağı kullanmalı
+        if (!has) {
+          try {
+            const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+            const userData = userDataStr ? JSON.parse(userDataStr) : null;
+            const userId = userData?.id;
+            if (userId) {
+              const res = await predictionsDb.getUserPredictions(userId, 200);
+              if (res.success && (res as any).data?.length) {
+                const fid = Number(matchId);
+                const hasInDb = (res as any).data.some((p: any) => p.match_id != null && Number(p.match_id) === fid);
+                if (hasInDb) has = true;
+              }
+            }
+          } catch (_) {}
+        }
+        setHasPrediction(has);
         return;
       }
       
@@ -238,6 +255,21 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         } catch (_) {}
       }
 
+      // ✅ Liste ile senkron: Tahmin sadece Supabase'de varsa liste sarı/yıldız gösterir; detay da aynı kaynağı kullanmalı
+      if (!hasPred) {
+        try {
+          const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+          const userData = userDataStr ? JSON.parse(userDataStr) : null;
+          const userId = userData?.id;
+          if (userId) {
+            const res = await predictionsDb.getUserPredictions(userId, 200);
+            if (res.success && (res as any).data?.length) {
+              const hasInDb = (res as any).data.some((p: any) => p.match_id != null && Number(p.match_id) === fixtureId);
+              if (hasInDb) hasPred = true;
+            }
+          }
+        } catch (_) {}
+      }
       setHasPrediction(hasPred);
       
       // ✅ hasViewedCommunityData değerini de oku
@@ -1239,7 +1271,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         // ✅ favoriteTeamIds değiştiğinde yeniden mount et (key değişir)
         return (
           <MatchSquad
-            key={`squad-${matchId}-${predictionTeamIdForProps ?? 'all'}-fav${favoriteTeamIds.length}`}
+            key={`squad-${matchId}-${predictionTeamIdForProps ?? 'all'}-fav${favoriteTeamIds.length}-r${squadAndPredictionResetKey}`}
             matchData={matchData}
             matchId={matchId}
             lineups={lineups}
@@ -1279,6 +1311,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         }
         return (
           <MatchPrediction
+            key={`pred-${matchId}-${predictionTeamIdForProps ?? 'all'}-r${squadAndPredictionResetKey}`}
             matchData={matchData}
             matchId={matchId}
             predictionTeamId={predictionTeamIdForProps}

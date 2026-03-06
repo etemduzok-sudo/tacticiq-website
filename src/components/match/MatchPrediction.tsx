@@ -343,6 +343,12 @@ const mockPositions = [
   { x: 10, y: 16 }, { x: 50, y: 10 }, { x: 90, y: 16 }, // Attack - V, wider
 ];
 
+// Saha içi formasyon kutusunda kısa gösterim: 4-3-3-holding -> 4-3-3, 4-4-2-diamond -> 4-4-2
+function getShortFormationDisplay(formationId: string | null | undefined): string {
+  if (!formationId) return '–';
+  return formationId.replace(/-(holding|false9|diamond|attack)$/i, '');
+}
+
 // Football Field Component
 const FootballField = ({ children, style }: any) => (
   <View style={[styles.fieldContainer, style]}>
@@ -472,6 +478,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [showLockedWarningModal, setShowLockedWarningModal] = useState(false); // ✅ Web için kilitli uyarı modal'ı
   const [lockedWarningReason, setLockedWarningReason] = useState<'unlock_at_bottom' | 'match_started' | 'community_viewed' | 'real_lineup_viewed' | 'community_and_lineup_viewed' | 'master_then_player'>('unlock_at_bottom');
   const [showViewOnlySimplePopup, setShowViewOnlySimplePopup] = useState(false); // Resim-1: sadece izleme modu ikonu + yazı
+  const [myPredictionFormationExpanded, setMyPredictionFormationExpanded] = useState<'attack' | 'defense' | null>(null); // ✅ Benim Tahminim altında atak/defans formasyonu göster
   const [liveReactionPlayer, setLiveReactionPlayer] = useState<any>(null); // ✅ Canlı maç reaction popup
   // ✅ row1 (Çok İyi/Kötü tek), row2Goal/row2Sub (ayrı ayrı), row3Yellow/row3Red (ayrı ayrı), row4 (Maçın adamı)
   type LiveReactionRow = { row1?: 'good'|'bad'; row2Goal?: boolean; row2Sub?: boolean; row3Yellow?: boolean; row3Red?: boolean; row4?: 'motm' };
@@ -882,6 +889,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   // ✅ Topluluk sahası sağ alt "i" → tek popup, dropdown ile kategori seçimi
   const [showCommunityInfoModal, setShowCommunityInfoModal] = useState(false);
   const [communityInfoSelectedIndex, setCommunityInfoSelectedIndex] = useState(0);
+  /** Resim 1: "Topluluk Tahminleri Gizli" overlay'ı Vazgeç/Topluluk tahminlerini gör ile kapatıldı mı */
+  const [communityHiddenOverlayDismissed, setCommunityHiddenOverlayDismissed] = useState(false);
   // ✅ 120 saniyelik timeout kaldırıldı - predictionTimeoutRef artık kullanılmıyor
   
   // 🌟 STRATEGIC FOCUS SYSTEM
@@ -1169,8 +1178,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       { label: 'Top Hakimiyeti', title: 'Top Hakimiyeti', generalDescription: 'Maç boyunca topa sahip olma oranını tahmin edin. Hangi takım daha fazla topa sahip olacak?', communityDescription: `${c.totalUsers.toLocaleString()} kullanıcının top hakimiyeti tahminleri:`, communityStats: [{ label: 'Ev sahibi dominant (55%+)', value: `%${c.possession.homeDominant}`, percentage: c.possession.homeDominant }, { label: 'Dengeli (45-55%)', value: `%${c.possession.balanced}`, percentage: c.possession.balanced }, { label: 'Deplasman dominant', value: `%${c.possession.awayDominant}`, percentage: c.possession.awayDominant }, { label: 'Ortalama tahmin (ev)', value: `%${c.possession.avgHomePossession}`, percentage: c.possession.avgHomePossession }] },
       { label: 'Şut / Korner', title: 'Şut İstatistikleri', generalDescription: 'Maçtaki toplam şut, korner sayısı ve isabetli şut oranını tahmin edin.', communityDescription: `${c.totalUsers.toLocaleString()} kullanıcının şut ve korner tahminleri:`, communityStats: [...c.shots.totalRanges.map(r => ({ label: `Toplam şut (${r.range})`, value: `%${r.percentage}`, percentage: r.percentage })), { label: 'Ortalama toplam şut', value: String(c.shots.avgTotal), percentage: Math.round(c.shots.avgTotal * 2.5) }, { label: 'İsabetli şut oranı', value: `%${c.shots.onTargetPercentage}`, percentage: c.shots.onTargetPercentage }, { label: '——— Korner ———', value: '', percentage: 0 }, ...c.corners.totalRanges.map(r => ({ label: `Toplam korner (${r.range})`, value: `%${r.percentage}`, percentage: r.percentage })), { label: 'Ortalama toplam korner', value: String(c.corners.avgTotal), percentage: Math.round(c.corners.avgTotal * 3) }] },
       { label: 'Taktik', title: 'Taktik Tahminleri', generalDescription: 'Maçın taktik yapısını tahmin edin. Oyun temposu ve maç senaryosunu (dengeli oyun, geçiş oyunu vb.) öngörün.', communityDescription: `${c.totalUsers.toLocaleString()} kullanıcının taktik tahminleri:`, communityStats: [...c.tactics.tempo.map(t => ({ label: `${t.type} tempo`, value: `%${t.percentage}`, percentage: t.percentage })), ...((c.tactics as any).scenarios?.map((s: { type: string; percentage: number }) => ({ label: s.type, value: `%${s.percentage}`, percentage: s.percentage })) ?? [{ label: 'Dengeli maç', value: `%${c.tactics.scenarioPercentage}`, percentage: c.tactics.scenarioPercentage }, { label: 'Geçiş oyunu ağırlıklı', value: '%22', percentage: 22 }])] },
-      { label: 'Atak Formasyonu', title: 'Atak Formasyonu – Topluluk', generalDescription: 'Topluluğun en çok tercih ettiği atak formasyonları.', communityDescription: `${c.totalUsers.toLocaleString()} kullanıcının tercihleri:`, communityStats: c.attackFormations?.map((f: { name: string; percentage: number }) => ({ label: f.name, value: `%${f.percentage}`, percentage: f.percentage })) ?? [{ label: '4-3-3', value: '%42', percentage: 42 }, { label: '4-4-2', value: '%28', percentage: 28 }, { label: '3-5-2', value: '%18', percentage: 18 }, { label: 'Diğer', value: '%12', percentage: 12 }] },
-      { label: 'Defans Formasyonu', title: 'Defans Formasyonu – Topluluk', generalDescription: 'Topluluğun en çok tercih ettiği defans formasyonları.', communityDescription: `${c.totalUsers.toLocaleString()} kullanıcının tercihleri:`, communityStats: c.defenseFormations?.map((f: { name: string; percentage: number }) => ({ label: f.name, value: `%${f.percentage}`, percentage: f.percentage })) ?? [{ label: '4-4-2', value: '%28', percentage: 28 }, { label: '4-3-3', value: '%24', percentage: 24 }, { label: '3-5-2', value: '%22', percentage: 22 }, { label: 'Diğer', value: '%26', percentage: 26 }] },
+      // Atak / Defans formasyonu sekmeleri kaldırıldı – altta ayrı satırda (Atak 4-3-3 %42, Defans 4-4-2 %28) zaten gösteriliyor
     ];
   }, [communityMatchPredictions]);
 
@@ -3123,11 +3131,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={[styles.multiFieldWrapper, styles.multiFieldWrapperKadroMatch, { width: scrollViewWidth > 0 ? scrollViewWidth : effectivePageWidth, minHeight: fieldHeight + 52 }]}>
                 <FootballField style={[styles.mainField, fieldDynamicStyle]}>
                   {threeFieldData.userSquad && threeFieldData.userSquad.players.length > 0 ? (
+                    <>
                     <View style={styles.playersContainer}>
                       {(() => {
-                        const userFormation = (threeFieldData.userSquad?.formation || '4-3-3').trim();
-                        const positions = formationPositions[userFormation] || formationPositions['4-3-3'] || mockPositions;
-                        const slotLabels = formationLabels[userFormation] || [];
+                        // Atak seçiliyse atak formasyonu, defans seçiliyse defans formasyonu sahadaki pozisyonlarda gösterilir
+                        const formationForDisplay = myPredictionFormationExpanded === 'defense'
+                          ? (threeFieldData.userSquad?.defenseFormation || threeFieldData.userSquad?.formation || '4-3-3').trim()
+                          : (threeFieldData.userSquad?.formation || '4-3-3').trim();
+                        const positions = formationPositions[formationForDisplay] || formationPositions['4-3-3'] || mockPositions;
+                        const slotLabels = formationLabels[formationForDisplay] || [];
                         return threeFieldData.userSquad?.players.slice(0, 11).map((player: any, index: number) => {
                           const pos = positions[index] || { x: 50, y: 50 };
                           const positionLabel = slotLabels[index] || getPositionAbbreviation(player.position || '');
@@ -3174,6 +3186,32 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         });
                       })()}
                     </View>
+                    {/* Formasyon bildirimi: saha içi sağ alt, 2 satır, sadece kadro tahmini varken; Atak sarı, Defans kırmızı */}
+                    <View style={styles.myPredictionFormationInsideField} pointerEvents="box-none">
+                      <View style={styles.myPredictionFormationInsideFieldBox}>
+                        <TouchableOpacity
+                          style={[styles.myPredictionFormationInsideFieldRow, myPredictionFormationExpanded === 'attack' && styles.myPredictionFormationInsideFieldRowActive]}
+                          onPress={() => setMyPredictionFormationExpanded((s) => (s === 'attack' ? null : 'attack'))}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="flash" size={14} color="#FBBF24" />
+                          <Text style={[styles.myPredictionFormationInsideFieldText, myPredictionFormationExpanded === 'attack' && styles.myPredictionFormationInsideFieldTextActive]} numberOfLines={1}>
+                            {getShortFormationDisplay(threeFieldData.userSquad?.formation ? (formations.find((f: { id: string }) => f.id === threeFieldData.userSquad?.formation)?.id ?? threeFieldData.userSquad?.formation) : null)}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.myPredictionFormationInsideFieldRow, myPredictionFormationExpanded === 'defense' && styles.myPredictionFormationInsideFieldRowActive]}
+                          onPress={() => setMyPredictionFormationExpanded((s) => (s === 'defense' ? null : 'defense'))}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="shield" size={14} color="#EF4444" />
+                          <Text style={[styles.myPredictionFormationInsideFieldText, myPredictionFormationExpanded === 'defense' && styles.myPredictionFormationInsideFieldTextActive]} numberOfLines={1}>
+                            {getShortFormationDisplay(threeFieldData.userSquad?.defenseFormation ? (formations.find((f: { id: string }) => f.id === threeFieldData.userSquad?.defenseFormation)?.id ?? threeFieldData.userSquad?.defenseFormation) : null)}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    </>
                   ) : (!openedFromSquadPopupRef.current ? (
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, zIndex: 20 }}>
                       <View style={{
@@ -3396,7 +3434,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     })()}
                   </View>
                   {/* Resim 1 bildirimi kaldırıldı: "Topluluk verileri oluştu" kartı yok; onay için resim 2 (Emin misiniz?) kullanılıyor */}
-                  {!hasPrediction && !communityDataVisible && (
+                  {!hasPrediction && !communityDataVisible && !communityHiddenOverlayDismissed && (
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, zIndex: 15 }}>
                       <View style={{ width: 280, minHeight: 368, borderRadius: 24, overflow: 'hidden', alignItems: 'center', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 }}>
                         <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ paddingVertical: 32, paddingHorizontal: 28, width: '100%', minHeight: 368, alignItems: 'center', justifyContent: 'center' }}>
@@ -3406,9 +3444,30 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                           <Text style={{ color: '#F1F5F9', fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 6, letterSpacing: 0.4 }}>
                             Topluluk Tahminleri Gizli
                           </Text>
-                          <Text style={{ color: 'rgba(241, 245, 249, 0.78)', fontSize: 12, textAlign: 'center', lineHeight: 18, paddingHorizontal: 8 }}>
+                          <Text style={{ color: 'rgba(241, 245, 249, 0.78)', fontSize: 12, textAlign: 'center', lineHeight: 18, paddingHorizontal: 8, marginBottom: 24 }}>
                             Önce tahminlerinizi yapın ve kaydedin
                           </Text>
+                          <View style={{ width: '100%', alignItems: 'center', gap: 10 }}>
+                            <TouchableOpacity
+                              style={[styles.unifiedPopupButtonKapat, { width: '100%', maxWidth: 220, flexDirection: 'row', justifyContent: 'center', gap: 8 }]}
+                              onPress={() => {
+                                setCommunityInfoSelectedIndex(0);
+                                setShowCommunityInfoModal(true);
+                                setCommunityHiddenOverlayDismissed(true);
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              <Ionicons name="people-outline" size={18} color="#FFFFFF" />
+                              <Text style={styles.unifiedPopupButtonKapatText}>Topluluk tahminlerini gör</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.unifiedPopupButtonKapat, { width: '100%', maxWidth: 220 }]}
+                              onPress={() => setCommunityHiddenOverlayDismissed(true)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={styles.unifiedPopupButtonKapatText}>Vazgeç</Text>
+                            </TouchableOpacity>
+                          </View>
                         </LinearGradient>
                       </View>
                     </View>
@@ -3668,10 +3727,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     </View>
                   ) : (
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, zIndex: 20 }}>
-                      <View style={{ width: 280, minHeight: 368, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.25)', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 }}>
+                      <View style={{ width: 280, minHeight: 368, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.35)', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 }}>
                         <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ paddingVertical: 24, paddingHorizontal: 22, width: '100%', minHeight: 368, alignItems: 'center', justifyContent: 'flex-start' }}>
-                          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(239, 68, 68, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                            <Ionicons name="football" size={22} color="#EF4444" />
+                          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(245, 158, 11, 0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                            <Ionicons name="football" size={22} color="#F59E0B" />
                           </View>
                           <Text style={{ color: '#F1F5F9', fontSize: 15, fontWeight: '700', textAlign: 'center', marginBottom: 2 }}>
                             Gerçek kadro hazır!
@@ -3682,17 +3741,17 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                             </Text>
                             <Text style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', lineHeight: 19 }}>
                               Tahminlerinizi görmeden önce maç kadrosunu görmek isterseniz bu maç için{' '}
-                              <Text style={{ color: '#EF4444', fontWeight: '600' }}>artık tahmin yapamayacaksınız.</Text>
+                              <Text style={{ color: '#F59E0B', fontWeight: '600' }}>artık tahmin yapamayacaksınız.</Text>
                             </Text>
                           </ScrollView>
                           <View style={{ marginTop: 16, alignItems: 'center', width: '100%' }}>
                             <TouchableOpacity
-                              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'transparent', borderRadius: 999, paddingVertical: 11, paddingHorizontal: 24, minWidth: 160, borderWidth: 1.5, borderColor: '#EF4444' }}
+                              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#F59E0B', borderRadius: 999, paddingVertical: 11, paddingHorizontal: 24, minWidth: 160 }}
                               onPress={() => setLockConfirmType('real')}
                               activeOpacity={0.88}
                             >
-                              <Ionicons name="eye-outline" size={18} color="#EF4444" />
-                              <Text style={{ fontSize: 14, fontWeight: '600', color: '#EF4444' }}>Kadroyu gör</Text>
+                              <Ionicons name="eye-outline" size={18} color="#0F172A" />
+                              <Text style={{ fontSize: 14, fontWeight: '600', color: '#0F172A' }}>Kadroyu gör</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={{ marginTop: 10, paddingVertical: 8, paddingHorizontal: 16 }}
@@ -3711,8 +3770,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     </View>
                   )}
                   {threeFieldData.actualSquad.players.length > 0 && (realLineupVisible || isMatchLive || isMatchFinished) && (
-                    <View style={styles.fieldFormationBadge}>
-                      <Text style={styles.fieldFormationText}>{threeFieldData.actualSquad.formation}</Text>
+                    <View style={styles.fieldFormationBadgeStack}>
+                      <View style={styles.fieldFormationRow}>
+                        <Ionicons name="flash" size={12} color="#F59E0B" />
+                        <Text style={styles.fieldFormationText}>{threeFieldData.actualSquad.formation}</Text>
+                      </View>
+                      <View style={styles.fieldFormationRow}>
+                        <Ionicons name="shield" size={12} color="#3B82F6" />
+                        <Text style={styles.fieldFormationText}>{threeFieldData.actualSquad.formation}</Text>
+                      </View>
                     </View>
                   )}
                   {/* Performans barı saha altına taşındı (dikey bar kaldırıldı) */}
@@ -3760,114 +3826,91 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     </View>
                   </TouchableOpacity>
                 </View>
-                {/* Takım performansı popup: maç başlamadıysa sadece bilgi; canlı/bitmişte 1–10 seçimi */}
+                {/* Takım performansı popup: tabandan bağımsız, sabit boyut, içinde scroll yok (Resim 1) */}
                 <Modal visible={showTeamPerfPopup} transparent animationType="fade" statusBarTranslucent>
-                  <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20 }} activeOpacity={1} onPress={() => setShowTeamPerfPopup(false)}>
-                    <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, maxHeight: '88%' }}>
-                      <ScrollView style={{ maxHeight: '100%' }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-                        <View style={{ backgroundColor: '#0F1F1F', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: !(isMatchLive || isMatchFinished) ? 'rgba(245, 158, 11, 0.35)' : 'rgba(16,185,129,0.35)' }}>
-                          {!(isMatchLive || isMatchFinished) ? (
-                            <>
-                              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(245, 158, 11, 0.2)', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
-                                <Ionicons name="information-circle" size={28} color="#F59E0B" />
-                              </View>
-                              <Text style={{ fontSize: 16, fontWeight: '600', color: '#F1F5F9', textAlign: 'center', marginBottom: 12 }}>Takım oyun performansı</Text>
-                              <Text style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
-                                Takım ve oyuncu performansına ait oylama, maç başladıktan sonra ve maç bitene kadar değerlendirilebilir ve oylanabilir.
-                              </Text>
-                              <TouchableOpacity onPress={() => setShowTeamPerfPopup(false)} style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.4)' }} activeOpacity={0.8}>
-                                <Text style={{ fontSize: 14, fontWeight: '600', color: '#FCD34D' }}>Tamam</Text>
-                              </TouchableOpacity>
-                            </>
-                          ) : (
-                            <>
-                          <Text style={{ fontSize: 18, fontWeight: '600', color: '#F1F5F9', textAlign: 'center', marginBottom: 10 }}>Oyun içi takım ve oyuncu performansı</Text>
-                          <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginBottom: 14, lineHeight: 18 }}>
-                            Takımınızın maçtaki performansını 1–10 arası puanlayın. Maç boyunca istediğiniz an güncelleyebilirsiniz; topluluk ortalaması da anlık değerlendirmeyi yansıtır.
-                          </Text>
-                          <View style={{ backgroundColor: 'rgba(94,234,212,0.12)', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(94,234,212,0.3)' }}>
-                            <Text style={{ fontSize: 12, color: '#5EEAD4', fontWeight: '700', textAlign: 'center', marginBottom: 4 }}>Topluluk ortalaması</Text>
-                            <Text style={{ fontSize: 15, color: '#F0FDFA', fontWeight: '800', textAlign: 'center' }}>
-                              {communityTeamPerformanceAvg != null ? `${communityTeamPerformanceAvg.toFixed(1)}/10` : '—/10'}
+                  <TouchableOpacity style={styles.unifiedPopupOverlay} activeOpacity={1} onPress={() => setShowTeamPerfPopup(false)}>
+                    <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={[styles.unifiedPopupCardWrap, { maxHeight: winH * 0.85 }]}>
+                      <View style={[styles.unifiedPopupCard, !(isMatchLive || isMatchFinished) && styles.unifiedPopupCardCompact, { borderColor: !(isMatchLive || isMatchFinished) ? 'rgba(245, 158, 11, 0.35)' : 'rgba(16,185,129,0.35)' }]}>
+                        {!(isMatchLive || isMatchFinished) ? (
+                          <>
+                            <View style={styles.unifiedPopupIconWrap}>
+                              <Ionicons name="information-circle" size={28} color="#F59E0B" />
+                            </View>
+                            <Text style={styles.unifiedPopupTitle}>Takım oyun performansı</Text>
+                            <Text style={styles.unifiedPopupBody}>
+                              Takım ve oyuncu performansına ait oylama, maç başladıktan sonra ve maç bitene kadar değerlendirilebilir ve oylanabilir.
                             </Text>
-                            {communityTeamPerformanceAvg != null && (
-                              <Text style={{ fontSize: 10, color: '#94A3B8', textAlign: 'center', marginTop: 2 }}>
-                                (tam: {Math.floor(communityTeamPerformanceAvg)}, 10'da {Math.round((communityTeamPerformanceAvg - Math.floor(communityTeamPerformanceAvg)) * 10)})
+                            <TouchableOpacity onPress={() => setShowTeamPerfPopup(false)} style={styles.unifiedPopupButtonTamam} activeOpacity={0.8}>
+                              <Text style={styles.unifiedPopupButtonTamamText}>Tamam</Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : (
+                          <>
+                            <Text style={styles.unifiedPopupTitleLarge}>Oyun içi takım ve oyuncu performansı</Text>
+                            <Text style={styles.unifiedPopupBody}>
+                              Takımınızın maçtaki performansını 1–10 arası puanlayın. Maç boyunca istediğiniz an güncelleyebilirsiniz; topluluk ortalaması da anlık değerlendirmeyi yansıtır.
+                            </Text>
+                            <View style={styles.teamPerfCommunityBox}>
+                              <Text style={styles.teamPerfCommunityLabel}>Topluluk ortalaması</Text>
+                              <Text style={styles.teamPerfCommunityValue}>
+                                {communityTeamPerformanceAvg != null ? `${communityTeamPerformanceAvg.toFixed(1)}/10` : '—/10'}
                               </Text>
-                            )}
-                          </View>
-                          <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginBottom: 8 }}>Oyuncu kartlarına dokunarak şu oyları da verebilirsiniz:</Text>
-                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 10, gap: 6 }}>
-                            <View style={{ backgroundColor: 'rgba(16,185,129,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(16,185,129,0.5)' }}>
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#34D399' }}>Çok iyi oynuyor</Text>
+                              {communityTeamPerformanceAvg != null && (
+                                <Text style={styles.teamPerfCommunitySub}>
+                                  (tam: {Math.floor(communityTeamPerformanceAvg)}, 10'da {Math.round((communityTeamPerformanceAvg - Math.floor(communityTeamPerformanceAvg)) * 10)})
+                                </Text>
+                              )}
                             </View>
-                            <View style={{ backgroundColor: 'rgba(239,68,68,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(239,68,68,0.5)' }}>
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#F87171' }}>Kötü oynuyor</Text>
+                            <Text style={styles.teamPerfHint}>Oyuncu kartlarına dokunarak şu oyları da verebilirsiniz:</Text>
+                            <View style={styles.teamPerfPillsWrap}>
+                              <View style={styles.teamPerfPill}><Text style={[styles.teamPerfPillText, { color: '#34D399' }]}>Çok iyi oynuyor</Text></View>
+                              <View style={styles.teamPerfPill}><Text style={[styles.teamPerfPillText, { color: '#F87171' }]}>Kötü oynuyor</Text></View>
+                              <View style={styles.teamPerfPill}><Text style={[styles.teamPerfPillText, { color: '#60A5FA' }]}>Gol atar</Text></View>
+                              <View style={styles.teamPerfPill}><Text style={[styles.teamPerfPillText, { color: '#A78BFA' }]}>Oyundan çıkmalı</Text></View>
+                              <View style={styles.teamPerfPill}><Text style={[styles.teamPerfPillText, { color: '#FBBF24' }]}>Sarı kart görür</Text></View>
+                              <View style={styles.teamPerfPill}><Text style={[styles.teamPerfPillText, { color: '#F87171' }]}>Kırmızı kart görür</Text></View>
+                              <View style={styles.teamPerfPill}><Text style={[styles.teamPerfPillText, { color: '#EAB308' }]}>Maçın adamı olacak</Text></View>
                             </View>
-                            <View style={{ backgroundColor: 'rgba(59,130,246,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(59,130,246,0.5)' }}>
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#60A5FA' }}>Gol atar</Text>
+                            <Text style={styles.teamPerfFooterHint}>Tüm tercihleriniz canlı maç boyunca her an değiştirilebilir.</Text>
+                            <View style={styles.teamPerfGridWrap}>
+                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
+                                const isSelected = teamPerformance === n;
+                                const perfColor = getTeamPerfColor(n);
+                                return (
+                                  <TouchableOpacity
+                                    key={n}
+                                    onPress={() => setTeamPerformance(n)}
+                                    style={[styles.teamPerfGridBtn, { backgroundColor: isSelected ? `${perfColor}30` : 'transparent', borderWidth: isSelected ? 2 : 1, borderColor: perfColor }]}
+                                    activeOpacity={0.8}
+                                  >
+                                    <Text style={[styles.teamPerfGridBtnText, { color: perfColor }]}>{n}</Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
                             </View>
-                            <View style={{ backgroundColor: 'rgba(139,92,246,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(139,92,246,0.5)' }}>
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#A78BFA' }}>Oyundan çıkmalı</Text>
-                            </View>
-                            <View style={{ backgroundColor: 'rgba(251,191,36,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251,191,36,0.5)' }}>
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#FBBF24' }}>Sarı kart görür</Text>
-                            </View>
-                            <View style={{ backgroundColor: 'rgba(220,38,38,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(220,38,38,0.5)' }}>
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#F87171' }}>Kırmızı kart görür</Text>
-                            </View>
-                            <View style={{ backgroundColor: 'rgba(234,179,8,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(234,179,8,0.6)' }}>
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#EAB308' }}>Maçın adamı olacak</Text>
-                            </View>
-                          </View>
-                          <Text style={{ fontSize: 10, color: '#64748B', textAlign: 'center', marginBottom: 18, lineHeight: 14 }}>Tüm tercihleriniz canlı maç boyunca her an değiştirilebilir.</Text>
-                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
-                              const isSelected = teamPerformance === n;
-                              const perfColor = getTeamPerfColor(n);
-                              return (
-                                <TouchableOpacity
-                                  key={n}
-                                  onPress={() => setTeamPerformance(n)}
-                                  style={{
-                                    width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-                                    backgroundColor: isSelected ? `${perfColor}30` : 'transparent',
-                                    borderWidth: isSelected ? 2 : 1,
-                                    borderColor: perfColor,
-                                  }}
-                                  activeOpacity={0.8}
-                                >
-                                  <Text style={{ fontSize: 16, fontWeight: '700', color: perfColor }}>{n}</Text>
-                                </TouchableOpacity>
-                              );
-                            })}
-                          </View>
-                          <TouchableOpacity onPress={handleTeamPerfPopupClose} style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }} activeOpacity={0.8}>
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#94A3B8' }}>Kapat</Text>
-                          </TouchableOpacity>
-                            </>
-                          )}
-                        </View>
-                      </ScrollView>
+                            <TouchableOpacity onPress={handleTeamPerfPopupClose} style={styles.unifiedPopupButtonKapat} activeOpacity={0.8}>
+                              <Text style={styles.unifiedPopupButtonKapatText}>Kapat</Text>
+                            </TouchableOpacity>
+                          </>
+                        )}
+                      </View>
                     </TouchableOpacity>
                   </TouchableOpacity>
                 </Modal>
-                {/* Maç başlamadı + gerçek kadro açık: oyuncu kartına tıklanınca "değerlendirme maç başladıktan sonra" bildirimi */}
+                {/* Maç içi canlı oyuncu değerlendirmesi bilgisi – Resim 3: aynı genişlik/renk, tabandan bağımsız, scroll yok */}
                 <Modal visible={showPreMatchEvaluationInfoPopup} transparent animationType="fade" statusBarTranslucent>
-                  <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 }} activeOpacity={1} onPress={() => setShowPreMatchEvaluationInfoPopup(false)}>
-                    <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 320 }}>
-                      <View style={{ backgroundColor: '#0F1F1F', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.35)' }}>
-                        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(245, 158, 11, 0.2)', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
+                  <TouchableOpacity style={styles.unifiedPopupOverlay} activeOpacity={1} onPress={() => setShowPreMatchEvaluationInfoPopup(false)}>
+                    <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={styles.unifiedPopupCardWrap}>
+                      <View style={[styles.unifiedPopupCard, styles.unifiedPopupCardCompact, { borderColor: 'rgba(245, 158, 11, 0.35)' }]}>
+                        <View style={styles.unifiedPopupIconWrap}>
                           <Ionicons name="information-circle" size={28} color="#F59E0B" />
                         </View>
-                        <Text style={{ fontSize: 16, fontWeight: '600', color: '#F1F5F9', textAlign: 'center', marginBottom: 12 }}>
-                          Maç içi canlı oyuncu değerlendirmesi
-                        </Text>
-                        <Text style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+                        <Text style={styles.unifiedPopupTitle}>Maç içi canlı oyuncu değerlendirmesi</Text>
+                        <Text style={styles.unifiedPopupBody}>
                           Oyunculara ait maç içi değerlendirme (oylama) ancak maç başladıktan sonra ve maç oynandığı sürece yapılabilir.
                         </Text>
-                        <TouchableOpacity onPress={() => setShowPreMatchEvaluationInfoPopup(false)} style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.4)' }} activeOpacity={0.8}>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: '#FCD34D' }}>Tamam</Text>
+                        <TouchableOpacity onPress={() => setShowPreMatchEvaluationInfoPopup(false)} style={styles.unifiedPopupButtonTamam} activeOpacity={0.8}>
+                          <Text style={styles.unifiedPopupButtonTamamText}>Tamam</Text>
                         </TouchableOpacity>
                       </View>
                     </TouchableOpacity>
@@ -6183,21 +6226,26 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         </Modal>
       )}
 
-      {/* Resim-1: İzleme modu – saha içi bildirimle aynı teal (#5EEAD4) */}
+      {/* İzleme modu – Resim 2/3 ile aynı boyut ve stil (340, #0F1F1F, Kapat tarzı buton) */}
       {showViewOnlySimplePopup && (
         <Modal visible transparent animationType="fade" onRequestClose={() => setShowViewOnlySimplePopup(false)} statusBarTranslucent>
-          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }} activeOpacity={1} onPress={() => setShowViewOnlySimplePopup(false)}>
-            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ backgroundColor: '#1B2527', borderRadius: 20, paddingVertical: 28, paddingHorizontal: 32, alignItems: 'center', minWidth: 200 }}>
-              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(94, 234, 212, 0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                <Ionicons name="eye-outline" size={28} color="#5EEAD4" />
+          <TouchableOpacity style={styles.unifiedPopupOverlay} activeOpacity={1} onPress={() => setShowViewOnlySimplePopup(false)}>
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={styles.unifiedPopupCardWrap}>
+              <View style={[styles.unifiedPopupCard, { borderColor: 'rgba(31, 162, 166, 0.35)' }]}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(31, 162, 166, 0.2)', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
+                  <Ionicons name="eye-outline" size={28} color="#5EEAD4" />
+                </View>
+                <Text style={[styles.unifiedPopupTitle, { fontSize: 18, marginBottom: 16 }]}>İzleme Modu</Text>
+                <TouchableOpacity onPress={() => setShowViewOnlySimplePopup(false)} style={styles.unifiedPopupButtonKapat} activeOpacity={0.8}>
+                  <Text style={styles.unifiedPopupButtonKapatText}>Anladım</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#5EEAD4', textAlign: 'center' }}>İzleme Modu</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
       )}
 
-      {/* ✅ OYUNCU BİLGİ POPUP - Kırmızı "i" butonuna tıklanınca açılır */}
+      {/* ✅ OYUNCU BİLGİ POPUP – Resim 4/5 yapı ve stil (genişlik 340, zemin #0F1F1F); uzun içerik için scroll kalır */}
       {playerInfoPopup && (
         <Modal
           visible={true}
@@ -6206,69 +6254,51 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           onRequestClose={() => setPlayerInfoPopup(null)}
           statusBarTranslucent
         >
-          <View style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: 20,
-          }}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() => setPlayerInfoPopup(null)}
-            />
-            <View style={{
-              width: '100%',
-              maxWidth: 380,
-              backgroundColor: '#1E3A3A',
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: 'rgba(31, 162, 166, 0.3)',
-              overflow: 'hidden',
-            }}>
-              {/* Header: Topluluk verisi ise teal/people, değilse kırmızı i */}
-              <View style={{
-                backgroundColor: playerInfoPopup.showCommunityData ? 'rgba(31, 162, 166, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                paddingVertical: 14,
-                paddingHorizontal: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: playerInfoPopup.showCommunityData ? 'rgba(31, 162, 166, 0.35)' : 'rgba(239, 68, 68, 0.3)',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <View style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: playerInfoPopup.showCommunityData ? '#1FA2A6' : '#EF4444',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    {playerInfoPopup.showCommunityData ? (
-                      <Ionicons name="people" size={16} color="#FFF" />
-                    ) : (
-                      <Text style={{ color: '#FFF', fontWeight: '700', fontStyle: 'italic' }}>i</Text>
+          <TouchableOpacity style={styles.unifiedPopupOverlay} activeOpacity={1} onPress={() => setPlayerInfoPopup(null)}>
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={[styles.unifiedPopupCardWrap, { maxHeight: winH * 0.85 }]}>
+              <View style={[styles.unifiedPopupCard, { borderColor: 'rgba(31, 162, 166, 0.35)', padding: 0, overflow: 'hidden' }]}>
+                {/* Header – Resim 4/5 ile uyumlu koyu zemin */}
+                <View style={{
+                  backgroundColor: 'rgba(31, 162, 166, 0.12)',
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                  borderBottomWidth: 1,
+                  borderBottomColor: 'rgba(31, 162, 166, 0.25)',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                    <View style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: playerInfoPopup.showCommunityData ? 'rgba(31, 162, 166, 0.35)' : 'rgba(239, 68, 68, 0.25)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {playerInfoPopup.showCommunityData ? (
+                        <Ionicons name="people" size={16} color="#5EEAD4" />
+                      ) : (
+                        <Ionicons name="information-circle" size={16} color="#F87171" />
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#F1F5F9', flex: 1 }} numberOfLines={1}>
+                      {playerInfoPopup.playerName}
+                    </Text>
+                    {playerInfoPopup.showCommunityData && (
+                      <View style={{ backgroundColor: 'rgba(94, 234, 212, 0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#5EEAD4' }}>Topluluk</Text>
+                      </View>
                     )}
                   </View>
-                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>
-                    {playerInfoPopup.playerName}
-                  </Text>
-                  {playerInfoPopup.showCommunityData && (
-                    <View style={{ backgroundColor: 'rgba(31, 162, 166, 0.3)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#5EEAD4' }}>Topluluk</Text>
-                    </View>
-                  )}
+                  <TouchableOpacity onPress={() => setPlayerInfoPopup(null)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                    <Ionicons name="close" size={22} color="#94A3B8" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setPlayerInfoPopup(null)}>
-                  <Ionicons name="close" size={24} color="#94A3B8" />
-                </TouchableOpacity>
-              </View>
 
-              {/* Content – Resim 1 ile aynı sırada: Gol, Asist, Penaltı, Kartlar, Değişiklik, Sakatlık */}
-              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator>
+                {/* İçerik – uzun olduğu için scroll (Resim 3) */}
+                <ScrollView style={{ maxHeight: winH * 0.5 }} showsVerticalScrollIndicator contentContainerStyle={{ paddingBottom: 12 }}>
                 <View style={{ padding: 16 }}>
                   {/* Pozisyon & Reyting */}
                   <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
@@ -6624,28 +6654,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
               </ScrollView>
 
-              {/* Close Button */}
-              <TouchableOpacity
-                style={{
-                  margin: 16,
-                  marginTop: 0,
-                  paddingVertical: 12,
-                  borderRadius: 10,
-                  backgroundColor: 'rgba(31, 162, 166, 0.2)',
-                  borderWidth: 1,
-                  borderColor: 'rgba(31, 162, 166, 0.4)',
-                  alignItems: 'center',
-                }}
-                onPress={() => setPlayerInfoPopup(null)}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '600', color: '#1FA2A6' }}>Tamam</Text>
-              </TouchableOpacity>
+              {/* Tamam – Resim 4/5 ile aynı Kapat stili */}
+              <View style={{ paddingHorizontal: 24, paddingBottom: 24, paddingTop: 8 }}>
+                <TouchableOpacity onPress={() => setPlayerInfoPopup(null)} style={styles.unifiedPopupButtonKapat} activeOpacity={0.8}>
+                  <Text style={styles.unifiedPopupButtonKapatText}>Tamam</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </Modal>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
       )}
 
-      {/* ✅ BÖLÜM TOPLULUK POPUP - Tahmin bölümlerinin "i" butonlarına tıklanınca */}
+      {/* ✅ BÖLÜM TOPLULUK POPUP – Resim 4/5: koyu gri satırlar, % yanında kişi sayısı, renk standardı */}
       {sectionInfoPopup && (
         <Modal
           visible={true}
@@ -6654,124 +6675,65 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           onRequestClose={() => setSectionInfoPopup(null)}
           statusBarTranslucent
         >
-          <View style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: 20,
-          }}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() => setSectionInfoPopup(null)}
-            />
-            <View style={{
-              width: '100%',
-              maxWidth: 380, // ✅ STANDART: 380px genişlik
-              backgroundColor: '#1E3A3A',
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: 'rgba(239, 68, 68, 0.3)',
-              overflow: 'hidden',
-            }}>
-              {/* Header */}
-              <View style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                paddingVertical: 14,
-                paddingHorizontal: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: 'rgba(239, 68, 68, 0.2)',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <View style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 13,
-                    backgroundColor: '#EF4444',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <Text style={{ color: '#FFF', fontWeight: '700', fontStyle: 'italic', fontSize: 13 }}>i</Text>
+          <TouchableOpacity style={styles.unifiedPopupOverlay} activeOpacity={1} onPress={() => setSectionInfoPopup(null)}>
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={styles.unifiedPopupCardWrap}>
+              <View style={[styles.unifiedPopupCard, styles.sectionPopupCard, { borderColor: 'rgba(55, 65, 81, 0.6)' }]}>
+                {/* Header – Resim 4/5 standart koyu gri */}
+                <View style={styles.sectionPopupHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={styles.sectionPopupIconWrap}>
+                      <Ionicons name="information-circle" size={24} color="#94A3B8" />
+                    </View>
+                    <Text style={styles.sectionPopupTitle}>
+                      {sectionInfoPopup.title}
+                    </Text>
                   </View>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>
-                    {sectionInfoPopup.title}
-                  </Text>
+                  <TouchableOpacity onPress={() => setSectionInfoPopup(null)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                    <Ionicons name="close" size={22} color="#94A3B8" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setSectionInfoPopup(null)}>
-                  <Ionicons name="close" size={22} color="#94A3B8" />
-                </TouchableOpacity>
-              </View>
 
-              {/* Content */}
-              <View style={{ padding: 16 }}>
-                <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 14, lineHeight: 18 }}>
+                <Text style={styles.sectionPopupDescription}>
                   {sectionInfoPopup.description}
                 </Text>
 
-                {/* Stats */}
-                <View style={{ gap: 10 }}>
-                  {sectionInfoPopup.stats.map((stat, idx) => (
-                    <View key={idx} style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                      padding: 12,
-                      borderRadius: 10,
-                      borderLeftWidth: 3,
-                      borderLeftColor: stat.percentage > 0 ? '#3B82F6' : '#64748B',
-                    }}>
-                      <Text style={{ fontSize: 14, color: '#E2E8F0', flex: 1 }}>{stat.label}</Text>
-                      <Text style={{ 
-                        fontSize: 15, 
-                        fontWeight: '700', 
-                        color: stat.percentage > 40 ? '#10B981' : stat.percentage > 25 ? '#3B82F6' : '#94A3B8',
-                      }}>
-                        {stat.value}
-                      </Text>
+                {/* Stats – Resim 4/5: koyu gri kutu, % yanında (X kişi) */}
+                {(() => {
+                  const totalUsers = communityMatchPredictions?.totalUsers ?? 0;
+                  return (
+                    <View style={styles.sectionPopupStatsWrap}>
+                      {sectionInfoPopup.stats.map((stat, idx) => {
+                        const showCount = Number.isFinite(stat.percentage) && stat.percentage >= 0 && stat.percentage <= 100;
+                        const count = showCount ? Math.round(totalUsers * stat.percentage / 100) : 0;
+                        const valueText = showCount && count > 0
+                          ? `${stat.value} (${count.toLocaleString('tr-TR')} kişi)`
+                          : stat.value;
+                        return (
+                          <View key={idx} style={styles.sectionPopupStatRow}>
+                            <Text style={styles.sectionPopupStatLabel}>{stat.label}</Text>
+                            <Text style={[styles.sectionPopupStatValue, { color: stat.percentage > 40 ? '#10B981' : stat.percentage > 25 ? '#5EEAD4' : '#94A3B8' }]}>
+                              {valueText}
+                            </Text>
+                          </View>
+                        );
+                      })}
                     </View>
-                  ))}
-                </View>
+                  );
+                })()}
 
-                {/* Info Note */}
-                <View style={{
-                  marginTop: 14,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  backgroundColor: 'rgba(100, 116, 139, 0.1)',
-                  padding: 10,
-                  borderRadius: 8,
-                }}>
+                <View style={styles.sectionPopupFooter}>
                   <Ionicons name="people" size={16} color="#64748B" />
-                  <Text style={{ fontSize: 12, color: '#64748B', flex: 1 }}>
+                  <Text style={styles.sectionPopupFooterText}>
                     Bu veriler tüm TacticIQ kullanıcılarının tahminlerinden hesaplanmıştır.
                   </Text>
                 </View>
-              </View>
 
-              {/* Close Button */}
-              <TouchableOpacity
-                style={{
-                  margin: 16,
-                  marginTop: 0,
-                  paddingVertical: 12,
-                  borderRadius: 10,
-                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                  borderWidth: 1,
-                  borderColor: 'rgba(239, 68, 68, 0.3)',
-                  alignItems: 'center',
-                }}
-                onPress={() => setSectionInfoPopup(null)}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '600', color: '#EF4444' }}>Kapat</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+                <TouchableOpacity onPress={() => setSectionInfoPopup(null)} style={styles.unifiedPopupButtonKapat} activeOpacity={0.8}>
+                  <Text style={styles.unifiedPopupButtonKapatText}>Kapat</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
       )}
 
@@ -6781,9 +6743,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
             <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setShowCommunityInfoModal(false)} />
             {/* Sabit yükseklik: tüm sekmeler için aynı boyut (520px) */}
-            <View style={{ width: '100%', maxWidth: 380, height: 520, minHeight: 520, backgroundColor: '#1E3A3A', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.35)', overflow: 'hidden' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(31, 162, 166, 0.25)' }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Topluluk istatistikleri</Text>
+            <View style={{ width: '100%', maxWidth: 380, height: 520, minHeight: 520, backgroundColor: '#0F1F1F', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(55, 65, 81, 0.6)', overflow: 'hidden' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(55, 65, 81, 0.6)' }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#F1F5F9' }}>Topluluk istatistikleri</Text>
                 <TouchableOpacity onPress={() => setShowCommunityInfoModal(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                   <Ionicons name="close" size={22} color="#94A3B8" />
                 </TouchableOpacity>
@@ -6799,53 +6761,135 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       paddingHorizontal: 12,
                       marginRight: 8,
                       borderRadius: 10,
-                      backgroundColor: communityInfoSelectedIndex === idx ? 'rgba(31, 162, 166, 0.35)' : 'rgba(255,255,255,0.06)',
+                      backgroundColor: communityInfoSelectedIndex === idx ? '#374151' : 'rgba(255,255,255,0.06)',
                       borderWidth: 1,
-                      borderColor: communityInfoSelectedIndex === idx ? '#1FA2A6' : 'rgba(255,255,255,0.08)',
+                      borderColor: communityInfoSelectedIndex === idx ? 'rgba(55, 65, 81, 0.9)' : 'rgba(255,255,255,0.08)',
                     }}
                     activeOpacity={0.8}
                   >
-                    <Text style={{ fontSize: 12, fontWeight: communityInfoSelectedIndex === idx ? '600' : '400', color: communityInfoSelectedIndex === idx ? '#5EEAD4' : '#94A3B8' }} numberOfLines={1}>
+                    <Text style={{ fontSize: 12, fontWeight: communityInfoSelectedIndex === idx ? '600' : '400', color: communityInfoSelectedIndex === idx ? '#E2E8F0' : '#94A3B8' }} numberOfLines={1}>
                       {section.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-              {/* İçerik alanı – sabit yükseklik, uzun listelerde scroll */}
+              {/* İçerik alanı – Taktik sekmesinde maça ait tahminler ile aynı yapı (Oyun Temposu + Maç Senaryosu) */}
               <ScrollView style={{ flex: 1, minHeight: 320 }} contentContainerStyle={{ padding: 16, paddingBottom: 8 }} showsVerticalScrollIndicator={true}>
                 {(() => {
                   const section = communityInfoSections[communityInfoSelectedIndex];
                   if (!section) return null;
+                  const c = communityMatchPredictions;
+                  const isTaktikSection = section.label === 'Taktik';
+                  if (isTaktikSection) {
+                    const tempoItems = [
+                      { label: 'Düşük', type: 'Düşük', icon: 'remove-circle-outline' as const, color: '#60A5FA' },
+                      { label: 'Orta', type: 'Orta', icon: 'pause-circle-outline' as const, color: '#FBBF24' },
+                      { label: 'Yüksek', type: 'Yüksek', icon: 'flash-outline' as const, color: '#F87171' },
+                    ];
+                    const scenarioItems = [
+                      { label: 'Kontrollü', type: 'Kontrollü oyun', icon: 'shield-checkmark-outline' as const, color: '#60A5FA' },
+                      { label: 'Baskılı', type: 'Baskılı oyun', icon: 'arrow-forward-circle-outline' as const, color: '#F87171' },
+                      { label: 'Geçiş oyunu', type: 'Geçiş oyunu ağırlıklı', icon: 'swap-horizontal-outline' as const, color: '#34D399' },
+                      { label: 'Dengeli maç', type: 'Dengeli maç', icon: 'scale-outline' as const, color: '#A78BFA' },
+                    ];
+                    const tempoPcts = c.tactics.tempo || [];
+                    const scenarioPcts = (c.tactics as any).scenarios || [
+                      { type: 'Kontrollü oyun', percentage: 18 },
+                      { type: 'Baskılı oyun', percentage: 22 },
+                      { type: 'Geçiş oyunu ağırlıklı', percentage: 22 },
+                      { type: 'Dengeli maç', percentage: c.tactics.scenarioPercentage ?? 38 },
+                    ];
+                    return (
+                      <>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                          <Ionicons name="bulb-outline" size={18} color="#F59E0B" style={{ marginRight: 6 }} />
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E2E8F0' }}>Taktik Tahminleri</Text>
+                        </View>
+                        <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 14, lineHeight: 18 }}>{section.communityDescription}</Text>
+                        <View style={{ marginBottom: 16 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                            <Ionicons name="speedometer-outline" size={14} color="#F59E0B" style={{ marginRight: 6 }} />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#94A3B8' }}>Oyun Temposu</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                            {tempoItems.map((item, i) => {
+                              const pct = tempoPcts.find((t: { type: string }) => t.type === item.type)?.percentage ?? 0;
+                              const count = Math.round((c.totalUsers ?? 0) * pct / 100);
+                              return (
+                                <View key={item.type} style={[styles.sectionPopupStatRow, { flex: 1, minWidth: '28%' }]}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                    <Ionicons name={item.icon} size={16} color={item.color} />
+                                    <Text style={[styles.sectionPopupStatLabel, { fontSize: 12 }]}>{item.label}</Text>
+                                  </View>
+                                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#5EEAD4' }}>%{pct}{count > 0 ? ` (${count.toLocaleString('tr-TR')} kişi)` : ''}</Text>
+                                </View>
+                              );
+                            })}
+                          </View>
+                        </View>
+                        <View style={{ marginBottom: 14 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                            <Ionicons name="git-branch-outline" size={14} color="#A78BFA" style={{ marginRight: 6 }} />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#94A3B8' }}>Maç Senaryosu</Text>
+                          </View>
+                          <View style={{ gap: 8 }}>
+                            {scenarioItems.map((item) => {
+                              const pct = scenarioPcts.find((s: { type: string }) => s.type === item.type)?.percentage ?? 0;
+                              const count = Math.round((c.totalUsers ?? 0) * pct / 100);
+                              return (
+                                <View key={item.type} style={styles.sectionPopupStatRow}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                    <Ionicons name={item.icon} size={18} color={item.color} />
+                                    <Text style={styles.sectionPopupStatLabel}>{item.label}</Text>
+                                  </View>
+                                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#5EEAD4' }}>%{pct}{count > 0 ? ` (${count.toLocaleString('tr-TR')} kişi)` : ''}</Text>
+                                </View>
+                              );
+                            })}
+                          </View>
+                        </View>
+                        <View style={[styles.sectionPopupFooter, { marginTop: 0 }]}>
+                          <Ionicons name="people" size={16} color="#64748B" />
+                          <Text style={styles.sectionPopupFooterText}>Bu veriler tüm TacticIQ kullanıcılarının tahminlerinden hesaplanmıştır.</Text>
+                        </View>
+                      </>
+                    );
+                  }
+                  const totalUsers = c.totalUsers ?? 0;
                   return (
                     <>
                       <Text style={{ fontSize: 14, fontWeight: '600', color: '#E2E8F0', marginBottom: 8 }}>{section.title}</Text>
                       <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 14, lineHeight: 18 }}>{section.communityDescription}</Text>
                       <View style={{ gap: 10 }}>
-                        {section.communityStats.map((stat, i) => (
-                          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(59, 130, 246, 0.08)', padding: 12, borderRadius: 10, borderLeftWidth: 3, borderLeftColor: stat.percentage > 0 ? '#3B82F6' : '#64748B' }}>
-                            <Text style={{ fontSize: 14, color: '#E2E8F0', flex: 1 }}>{stat.label}</Text>
-                            <Text style={{ fontSize: 15, fontWeight: '700', color: stat.percentage > 40 ? '#10B981' : stat.percentage > 25 ? '#3B82F6' : '#94A3B8' }}>{stat.value}</Text>
-                          </View>
-                        ))}
+                        {section.communityStats.map((stat, i) => {
+                          const showCount = Number.isFinite(stat.percentage) && stat.percentage >= 0 && stat.percentage <= 100;
+                          const count = showCount ? Math.round(totalUsers * stat.percentage / 100) : 0;
+                          const valueText = showCount && count > 0 ? `${stat.value} (${count.toLocaleString('tr-TR')} kişi)` : stat.value;
+                          return (
+                            <View key={i} style={styles.sectionPopupStatRow}>
+                              <Text style={styles.sectionPopupStatLabel}>{stat.label}</Text>
+                              <Text style={[styles.sectionPopupStatValue, { color: stat.percentage > 40 ? '#10B981' : stat.percentage > 25 ? '#5EEAD4' : '#94A3B8' }]}>{valueText}</Text>
+                            </View>
+                          );
+                        })}
                       </View>
-                      <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(100, 116, 139, 0.1)', padding: 10, borderRadius: 8 }}>
+                      <View style={[styles.sectionPopupFooter, { marginTop: 14 }]}>
                         <Ionicons name="people" size={16} color="#64748B" />
-                        <Text style={{ fontSize: 12, color: '#64748B', flex: 1 }}>Bu veriler tüm TacticIQ kullanıcılarının tahminlerinden hesaplanmıştır.</Text>
+                        <Text style={styles.sectionPopupFooterText}>Bu veriler tüm TacticIQ kullanıcılarının tahminlerinden hesaplanmıştır.</Text>
                       </View>
                     </>
                   );
                 })()}
               </ScrollView>
-              <TouchableOpacity style={{ margin: 16, marginTop: 0, paddingVertical: 12, borderRadius: 10, backgroundColor: 'rgba(31, 162, 166, 0.2)', borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.4)', alignItems: 'center' }} onPress={() => setShowCommunityInfoModal(false)}>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: '#5EEAD4' }}>Kapat</Text>
+              <TouchableOpacity style={[styles.unifiedPopupButtonKapat, { margin: 16, marginTop: 0 }]} onPress={() => setShowCommunityInfoModal(false)} activeOpacity={0.8}>
+                <Text style={styles.unifiedPopupButtonKapatText}>Kapat</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
       )}
 
-      {/* ✅ TOPLULUK VERİLERİ ONAY MODAL'I */}
-      {/* Kayıt sonrası kullanıcıya topluluk verilerini görmek isteyip istemediğini sorar */}
+      {/* ✅ TOPLULUK VERİLERİ ONAY MODAL'I – Resim 2/3 ile aynı birleşik popup stili */}
       {showCommunityConfirmModal && (
         <Modal
           visible={true}
@@ -6854,70 +6898,37 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           onRequestClose={() => setShowCommunityConfirmModal(false)}
           statusBarTranslucent
         >
-          <View style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: 20,
-          }}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() => setShowCommunityConfirmModal(false)}
-            />
-            <View style={{
-              width: '100%',
-              maxWidth: 380,
-              backgroundColor: '#1E3A3A',
-              borderRadius: 16,
-              overflow: 'hidden',
-              borderWidth: 1,
-              borderColor: 'rgba(16, 185, 129, 0.3)',
-            }}>
-              {/* Header */}
-              <LinearGradient
-                colors={['#065F46', '#064E3B']}
-                style={{ padding: 18 }}
-              >
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <TouchableOpacity style={styles.unifiedPopupOverlay} activeOpacity={1} onPress={() => setShowCommunityConfirmModal(false)}>
+            <TouchableOpacity activeOpacity={1} onPress={(e: any) => e?.stopPropagation?.()} style={styles.unifiedPopupCardWrap}>
+              <View style={[styles.unifiedPopupCard, { padding: 0, overflow: 'hidden', borderColor: 'rgba(31, 162, 166, 0.35)' }]}>
+                {/* Header – teal başlık, Resim 2/3 ile uyumlu */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18, paddingRight: 44, borderBottomWidth: 1, borderBottomColor: 'rgba(31, 162, 166, 0.25)', backgroundColor: 'rgba(31, 162, 166, 0.08)' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}>
-                      <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(31, 162, 166, 0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                      <Ionicons name="checkmark-circle" size={24} color="#1FA2A6" />
                     </View>
-                    <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>
-                      Tahminler Kaydedildi!
-                    </Text>
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: '#F1F5F9' }}>Tahminler Kaydedildi!</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setShowCommunityConfirmModal(false)}>
+                  <TouchableOpacity onPress={() => setShowCommunityConfirmModal(false)} style={{ position: 'absolute', top: 18, right: 16 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <Ionicons name="close" size={22} color="#94A3B8" />
                   </TouchableOpacity>
                 </View>
-              </LinearGradient>
 
-              {/* Content - yüksek kontrast, okunaklı */}
-              <View style={{ padding: 20 }}>
-                <Text style={{ fontSize: 16, color: '#F1F5F9', lineHeight: 24, marginBottom: 18, fontWeight: '500' }}>
-                  Tahminleriniz başarıyla kaydedildi. Şimdi ne yapmak istersiniz?
-                </Text>
+                <View style={{ padding: 20 }}>
+                  <Text style={{ fontSize: 15, color: '#E2E8F0', lineHeight: 22, marginBottom: 18 }}>
+                    Tahminleriniz başarıyla kaydedildi. Şimdi ne yapmak istersiniz?
+                  </Text>
 
-                {/* Option 1: Topluluk veya gerçek verileri gör – görülürse maç kalıcı kilitlenir */}
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 12,
-                    borderWidth: 1,
-                    borderColor: 'rgba(59, 130, 246, 0.3)',
-                  }}
+                  {/* Option 1: Topluluk veya gerçek verileri gör */}
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: 'rgba(94, 234, 212, 0.06)',
+                      borderRadius: 12,
+                      padding: 16,
+                      marginBottom: 12,
+                      borderWidth: 1,
+                      borderColor: 'rgba(31, 162, 166, 0.25)',
+                    }}
                   onPress={() => {
                     setConfirmModal({
                       title: 'Emin misiniz?',
@@ -6964,53 +6975,34 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <View style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 18,
-                      backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}>
-                      <Ionicons name="people" size={20} color="#3B82F6" />
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(31, 162, 166, 0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                      <Ionicons name="people" size={20} color="#1FA2A6" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '600', color: '#60A5FA' }}>
-                        Topluluk veya Gerçek Verileri Gör
-                      </Text>
-                      <Text style={{ fontSize: 13, color: '#CBD5E1', marginTop: 4 }}>
-                        Topluluk tahminleri veya gerçek kadro verilerini görün
-                      </Text>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#5EEAD4' }}>Topluluk veya Gerçek Verileri Gör</Text>
+                      <Text style={{ fontSize: 13, color: '#94A3B8', marginTop: 4 }}>Topluluk tahminleri veya gerçek kadro verilerini görün</Text>
                     </View>
                   </View>
-                  <View style={{
-                    marginTop: 10,
-                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                    padding: 10,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: 'rgba(239, 68, 68, 0.3)',
-                  }}>
+                  <View style={{ marginTop: 10, backgroundColor: 'rgba(239, 68, 68, 0.12)', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.25)' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                       <Ionicons name="warning" size={16} color="#EF4444" />
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#EF4444' }}>
-                        GERİ DÖNÜŞÜ YOK!
-                      </Text>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#FCA5A5' }}>GERİ DÖNÜŞÜ YOK!</Text>
                     </View>
-                    <Text style={{ fontSize: 12, color: '#FECACA', lineHeight: 18 }}>
+                    <Text style={{ fontSize: 12, color: '#94A3B8', lineHeight: 18 }}>
                       Topluluk veya gerçek verileri görürseniz bu maça ait tahminler kalıcı olarak kilitlenir. Tahminleriniz silinemez ve değiştirilemez; kadro seçiminiz dahil tüm tahminler donar.
                     </Text>
                   </View>
                 </TouchableOpacity>
 
-                {/* Option 2: Continue Without */}
+                {/* Option 2: Bağımsız Devam Et */}
                 <TouchableOpacity
                   style={{
-                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    backgroundColor: 'rgba(94, 234, 212, 0.06)',
                     borderRadius: 12,
                     padding: 16,
+                    marginBottom: 14,
                     borderWidth: 1,
-                    borderColor: 'rgba(16, 185, 129, 0.3)',
+                    borderColor: 'rgba(31, 162, 166, 0.25)',
                   }}
                   onPress={async () => {
                     setShowCommunityConfirmModal(false);
@@ -7032,63 +7024,38 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <View style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 18,
-                      backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}>
-                      <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(31, 162, 166, 0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                      <Ionicons name="shield-checkmark" size={20} color="#1FA2A6" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '600', color: '#34D399' }}>
-                        Bağımsız Devam Et
-                      </Text>
-                      <Text style={{ fontSize: 13, color: '#CBD5E1', marginTop: 4 }}>
-                        Topluluk verilerini görmeden devam et
-                      </Text>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#5EEAD4' }}>Bağımsız Devam Et</Text>
+                      <Text style={{ fontSize: 13, color: '#94A3B8', marginTop: 4 }}>Topluluk verilerini görmeden devam et</Text>
                     </View>
                   </View>
-                  <View style={{
-                    marginTop: 10,
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    padding: 10,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: 'rgba(16, 185, 129, 0.2)',
-                  }}>
+                  <View style={{ marginTop: 10, backgroundColor: 'rgba(55, 65, 81, 0.4)', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.2)' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                       <Ionicons name="star" size={14} color="#F59E0B" />
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#F59E0B' }}>
-                        +%10 Bağımsız Tahmin Bonusu
-                      </Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#F59E0B' }}>+%10 Bağımsız Tahmin Bonusu</Text>
                     </View>
-                    <Text style={{ fontSize: 12, color: '#CBD5E1', lineHeight: 17 }}>
+                    <Text style={{ fontSize: 12, color: '#94A3B8', lineHeight: 17 }}>
                       Şimdi düzenle → Maç başlasın → Otomatik kilitle + Topluluk verileri açılır
                     </Text>
                   </View>
                 </TouchableOpacity>
 
-                {/* Info Note */}
-                <View style={{
-                  marginTop: 14,
-                  flexDirection: 'row',
-                  alignItems: 'flex-start',
-                  gap: 8,
-                  backgroundColor: 'rgba(100, 116, 139, 0.1)',
-                  padding: 10,
-                  borderRadius: 8,
-                }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: 'rgba(55, 65, 81, 0.5)', padding: 10, borderRadius: 8, marginBottom: 16 }}>
                   <Ionicons name="information-circle" size={18} color="#94A3B8" style={{ marginTop: 2 }} />
-                  <Text style={{ fontSize: 13, color: '#94A3B8', flex: 1, lineHeight: 19 }}>
+                  <Text style={{ fontSize: 12, color: '#94A3B8', flex: 1, lineHeight: 19 }}>
                     Topluluk veya gerçek verileri görürseniz bu maça ait tahminler kalıcı kilitlenir; silinemez ve değiştirilemez. Bağımsız devam ederseniz maç başlayana kadar tüm tahminlerinizi düzenleyebilirsiniz.
                   </Text>
                 </View>
+
+                <TouchableOpacity onPress={() => setShowCommunityConfirmModal(false)} style={styles.unifiedPopupButtonKapat} activeOpacity={0.8}>
+                  <Text style={styles.unifiedPopupButtonKapatText}>Kapat</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         </Modal>
       )}
 
@@ -7119,29 +7086,26 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         const hasPerformanceData = goals > 0 || assists > 0 || yellowCards > 0 || redCards > 0 || wasSubbedOut || wasSubbedIn;
         
         const totalVotes = community ? Math.max(1, community.totalPredictions) : 0;
-        // row1: Çok İyi/Kötü, row2: Gol Atar/Çıkmalı, row3: Sarı/Kırmızı Kart, row4: Maçın adamı
+        // row1: Çok İyi/Kötü, row2: Gol Atar/Çıkmalı, row3: Sarı/Kırmızı Kart, row4: Maçın adamı — renkler Resim 1/2 (takım performansı popup) ile uyumlu
         const reactions = [
-          { key: 'good', icon: '🔥', label: 'Çok iyi oynuyor', color: '#10B981', count: community ? (community.goal + community.assist) : 0, pct: community ? Math.round((community.goal + community.assist) / totalVotes * 50) : 0 },
+          { key: 'good', icon: '🔥', label: 'Çok iyi oynuyor', color: '#1FA2A6', count: community ? (community.goal + community.assist) : 0, pct: community ? Math.round((community.goal + community.assist) / totalVotes * 50) : 0 },
           { key: 'bad', icon: '👎', label: 'Kötü oynuyor', color: '#EF4444', count: community ? community.substitutedOut : 0, pct: community ? Math.round(community.substitutedOut / totalVotes * 100) : 0 },
-          { key: 'goal', icon: '⚽', label: isGK ? 'Gol yer' : 'Gol atar', color: '#3B82F6', count: community ? community.goal : 0, pct: community ? Math.round(community.goal / totalVotes * 100) : 0 },
-          { key: 'sub', icon: '🔄', label: 'Oyundan çıkmalı', color: '#8B5CF6', count: community ? community.substitutedOut : 0, pct: community ? Math.round(community.substitutedOut / totalVotes * 100) : 0 },
-          { key: 'yellowcard', icon: 'card', label: 'Sarı kart görür', color: '#FBBF24', count: community ? community.yellowCard : 0, pct: community ? Math.round(community.yellowCard / totalVotes * 100) : 0 },
-          { key: 'redcard', icon: 'card', label: 'Kırmızı kart görür', color: '#DC2626', count: community ? community.redCard : 0, pct: community ? Math.round(community.redCard / totalVotes * 100) : 0 },
-          { key: 'motm', icon: 'star', label: 'Maçın adamı olacak', color: '#EAB308', count: 0, pct: 0 },
+          { key: 'goal', icon: '⚽', label: isGK ? 'Gol yer' : 'Gol atar', color: '#F59E0B', count: community ? community.goal : 0, pct: community ? Math.round(community.goal / totalVotes * 100) : 0 },
+          { key: 'sub', icon: '🔄', label: 'Oyundan çıkmalı', color: '#1FA2A6', count: community ? community.substitutedOut : 0, pct: community ? Math.round(community.substitutedOut / totalVotes * 100) : 0 },
+          { key: 'yellowcard', icon: 'card', label: 'Sarı kart görür', color: '#F59E0B', count: community ? community.yellowCard : 0, pct: community ? Math.round(community.yellowCard / totalVotes * 100) : 0 },
+          { key: 'redcard', icon: 'card', label: 'Kırmızı kart görür', color: '#EF4444', count: community ? community.redCard : 0, pct: community ? Math.round(community.redCard / totalVotes * 100) : 0 },
+          { key: 'motm', icon: 'star', label: 'Maçın adamı olacak', color: '#F59E0B', count: 0, pct: 0 },
         ];
-        const modalMaxHeight = winH * 0.88;
+        const modalMaxHeight = winH * 0.85;
         return (
         <Modal visible={true} transparent animationType="fade" statusBarTranslucent>
-          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 0 }} activeOpacity={1} onPress={() => setLiveReactionPlayer(null)}>
-            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '92%', maxWidth: 400, maxHeight: modalMaxHeight, alignSelf: 'center' }}>
+          <TouchableOpacity style={styles.unifiedPopupOverlay} activeOpacity={1} onPress={() => setLiveReactionPlayer(null)}>
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={[styles.unifiedPopupCardWrap, { maxHeight: modalMaxHeight }]}>
             {(() => {
               const topByPct = reactions.filter(r => r.key !== 'motm').reduce((max, r) => (r.pct > max.pct ? r : max), reactions[0]);
-              const modalBorderColor = topByPct.pct >= 10 ? topByPct.color : 'rgba(16,185,129,0.4)';
+              const modalBorderColor = topByPct.pct >= 10 ? topByPct.color : 'rgba(31, 162, 166, 0.4)';
               return (
-            <View style={{
-              backgroundColor: '#0F1F1F', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-              padding: 16, paddingBottom: 16, borderTopWidth: 2, borderColor: modalBorderColor,
-            }}>
+            <View style={[styles.unifiedPopupCard, styles.liveReactionCardInner, { borderColor: modalBorderColor, borderTopWidth: 2 }]}>
               <View style={{ alignItems: 'center', marginBottom: hasPerformanceData ? 8 : 10 }}>
                 <Text style={{ fontSize: 16, fontWeight: '800', color: '#F1F5F9' }}>
                   {pName}
@@ -7300,7 +7264,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                           {reaction.key === 'motm' ? (
                             <Ionicons name="star" size={18} color={reaction.color} />
                           ) : isCardIcon ? (
-                            <View style={{ width: 16, height: 20, borderRadius: 2, backgroundColor: isYellow ? '#FBBF24' : '#DC2626', borderWidth: 1, borderColor: 'rgba(0,0,0,0.2)' }} />
+                            <View style={{ width: 16, height: 20, borderRadius: 2, backgroundColor: isYellow ? '#F59E0B' : '#EF4444', borderWidth: 1, borderColor: 'rgba(0,0,0,0.2)' }} />
                           ) : (
                             <Text style={{ fontSize: 18 }}>{reaction.icon}</Text>
                           )}
@@ -7312,8 +7276,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         </View>
                       </TouchableOpacity>
                       {reaction.key === 'sub' && !!current.row2Sub && (
-                        <View style={{ backgroundColor: 'rgba(139,92,246,0.1)', borderRadius: 8, padding: 8, marginBottom: 10, marginTop: -2, borderWidth: 1, borderColor: 'rgba(139,92,246,0.2)' }}>
-                          <Text style={{ color: '#A78BFA', fontSize: 10, fontWeight: '600', marginBottom: 6 }}>Yerine kim girmeli?</Text>
+                        <View style={{ backgroundColor: 'rgba(31, 162, 166, 0.1)', borderRadius: 8, padding: 8, marginBottom: 10, marginTop: -2, borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.25)' }}>
+                          <Text style={{ color: '#1FA2A6', fontSize: 10, fontWeight: '600', marginBottom: 6 }}>Yerine kim girmeli?</Text>
                           <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
@@ -7333,9 +7297,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                     minWidth: 64,
                                     alignItems: 'center',
                                     marginRight: 6,
-                                    backgroundColor: top ? 'rgba(16,185,129,0.22)' : 'rgba(255,255,255,0.08)',
+                                    backgroundColor: top ? 'rgba(31, 162, 166, 0.2)' : 'rgba(255,255,255,0.08)',
                                     borderWidth: top ? 2 : 0,
-                                    borderColor: top ? '#10B981' : 'transparent',
+                                    borderColor: top ? '#1FA2A6' : 'transparent',
                                   }}
                                   onPress={() => {
                                     setLiveReactions(prev => ({ ...prev, [pId]: { ...normalizeLiveReaction(prev[pId]), row2Sub: true } }));
@@ -7343,8 +7307,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   }}
                                   activeOpacity={0.7}
                                 >
-                                  <Text style={{ color: top ? '#34D399' : '#E2E8F0', fontSize: 10, fontWeight: '600' }}>{sub.name?.split(' ').pop()}</Text>
-                                  <Text style={{ color: top ? '#6EE7B7' : '#94A3B8', fontSize: 8, marginTop: 2, fontWeight: '500' }}>
+                                  <Text style={{ color: top ? '#5EEAD4' : '#E2E8F0', fontSize: 10, fontWeight: '600' }}>{sub.name?.split(' ').pop()}</Text>
+                                  <Text style={{ color: top ? '#94A3B8' : '#94A3B8', fontSize: 8, marginTop: 2, fontWeight: '500' }}>
                                     %{pct} girmeli
                                   </Text>
                                 </TouchableOpacity>
@@ -7357,20 +7321,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   );
                 })}
               </View>
-              <TouchableOpacity
-                style={{
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingVertical: 8,
-                  paddingHorizontal: 20,
-                  borderRadius: 999,
-                  borderWidth: 1.5,
-                  borderColor: 'rgba(148,163,184,0.5)',
-                }}
-                onPress={() => setLiveReactionPlayer(null)}
-                activeOpacity={0.7}
-              >
-                <Text style={{ color: '#64748B', fontSize: 12 }}>Kapat</Text>
+              <TouchableOpacity onPress={() => setLiveReactionPlayer(null)} style={styles.unifiedPopupButtonKapat} activeOpacity={0.8}>
+                <Text style={styles.unifiedPopupButtonKapatText}>Kapat</Text>
               </TouchableOpacity>
             </View>
             ); })()}
@@ -7628,6 +7580,231 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#1FA2A6',
   },
+  // ✅ Birleşik popup: tabandan bağımsız, sabit genişlik (340), içinde scroll yok
+  unifiedPopupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+  },
+  unifiedPopupCardWrap: {
+    width: '100%',
+    maxWidth: 340,
+  },
+  unifiedPopupCard: {
+    backgroundColor: '#0F1F1F',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+  },
+  unifiedPopupCardCompact: {
+    padding: 22,
+  },
+  unifiedPopupIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  unifiedPopupTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F1F5F9',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  unifiedPopupTitleLarge: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#F1F5F9',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  unifiedPopupBody: {
+    fontSize: 13,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  // Bölüm popup (Atak/Defans formasyonu vb.) – Resim 4/5 renk standardı: koyu gri satırlar
+  sectionPopupCard: {
+    backgroundColor: '#0F1F1F',
+  },
+  sectionPopupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  sectionPopupIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#374151',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionPopupTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F1F5F9',
+    flex: 1,
+  },
+  sectionPopupDescription: {
+    fontSize: 13,
+    color: '#94A3B8',
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  sectionPopupStatsWrap: {
+    gap: 10,
+    marginBottom: 14,
+  },
+  sectionPopupStatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#374151',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(55, 65, 81, 0.8)',
+  },
+  sectionPopupStatLabel: {
+    fontSize: 14,
+    color: '#E2E8F0',
+    flex: 1,
+  },
+  sectionPopupStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  sectionPopupFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(55, 65, 81, 0.5)',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 18,
+  },
+  sectionPopupFooterText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    flex: 1,
+  },
+  // Tamam ve Kapat aynı standart stil (Resim 2 Kapat: koyu charcoal, yuvarlatılmış, beyaz metin)
+  unifiedPopupButtonTamam: {
+    backgroundColor: '#374151',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  unifiedPopupButtonTamamText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  unifiedPopupButtonKapat: {
+    backgroundColor: '#374151',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  unifiedPopupButtonKapatText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  teamPerfCommunityBox: {
+    backgroundColor: 'rgba(94,234,212,0.12)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(94,234,212,0.3)',
+  },
+  teamPerfCommunityLabel: {
+    fontSize: 12,
+    color: '#5EEAD4',
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  teamPerfCommunityValue: {
+    fontSize: 15,
+    color: '#F0FDFA',
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  teamPerfCommunitySub: {
+    fontSize: 10,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  teamPerfHint: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  teamPerfPillsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  teamPerfPill: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  teamPerfPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  teamPerfFooterHint: {
+    fontSize: 10,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 14,
+    lineHeight: 14,
+  },
+  teamPerfGridWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 18,
+  },
+  teamPerfGridBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  teamPerfGridBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  liveReactionCardInner: {
+    padding: 16,
+    paddingBottom: 16,
+  },
   // ✅ 3 konteyner: saha altında; ~%20 kısaltıldı, iç kutular 40px
   fieldBelowContent: {
     marginTop: 2,
@@ -7636,6 +7813,98 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingBottom: 0,
     justifyContent: 'center',
+  },
+  // ✅ Benim Tahminim saha içi sağ alt: Formasyon bildirimi (2 satır, Atak sarı / Defans kırmızı)
+  myPredictionFormationInsideField: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    left: undefined,
+    alignItems: 'flex-end',
+  },
+  myPredictionFormationInsideFieldBox: {
+    flexDirection: 'column',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.35)',
+    gap: 2,
+    minWidth: 72,
+  },
+  myPredictionFormationInsideFieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
+  },
+  myPredictionFormationInsideFieldRowActive: {
+    opacity: 1,
+  },
+  myPredictionFormationInsideFieldText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    flex: 1,
+  },
+  myPredictionFormationInsideFieldTextActive: {
+    color: '#E5E7EB',
+    fontWeight: '600',
+  },
+  // (Eski saha dışı blok kaldırıldı; aşağıdaki stiller başka yerde kullanılmıyorsa bırakıldı)
+  myPredictionFormationBlock: {
+    marginTop: 8,
+    marginHorizontal: 12,
+    marginBottom: 4,
+  },
+  myPredictionFormationButton: {
+    flexDirection: 'column',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.35)',
+    gap: 4,
+  },
+  myPredictionFormationLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  myPredictionFormationLineActive: {
+    opacity: 1,
+  },
+  myPredictionFormationLineText: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    flex: 1,
+  },
+  myPredictionFormationLineTextActive: {
+    color: '#E5E7EB',
+    fontWeight: '600',
+  },
+  myPredictionFormationExpanded: {
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(31, 162, 166, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.25)',
+  },
+  myPredictionFormationExpandedLabel: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 4,
+  },
+  myPredictionFormationExpandedValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#5EEAD4',
   },
   fieldBelowSection: {
     backgroundColor: '#1E3A3A',

@@ -3891,7 +3891,8 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
   const currentSelectedFormation = formationType === 'defense' ? currentDefenseFormation : currentAttackFormation;
   const [selectedFormationForDetail, setSelectedFormationForDetail] = useState<any>(null);
   const [hoveredFormation, setHoveredFormation] = useState<any>(null); // ✅ Önizleme için
-  
+  const [showDefenseFirstBanner, setShowDefenseFirstBanner] = useState(false); // ✅ Defans'a tıklanıp atak seçilmemişse modal içi banner
+
   // ✅ Formasyon popülerlik verileri (API'den gelecek, şimdilik mock)
   const [formationPopularity, setFormationPopularity] = React.useState<Record<string, number>>({});
   const [popularityLoading, setPopularityLoading] = React.useState(true);
@@ -3983,6 +3984,11 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
       onTabChange('attack');
     }
   }, [visible, formationType, canSelectDefense, onTabChange]);
+
+  // ✅ Modal kapatılınca "Önce Atak" banner'ını gizle
+  React.useEffect(() => {
+    if (!visible) setShowDefenseFirstBanner(false);
+  }, [visible]);
   
   // ✅ Tüm formasyonları göster (filtreleme yok - kullanıcı istediği formasyonu seçebilir)
   const filteredFormations = formations;
@@ -3991,126 +3997,132 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
     <>
       <Modal
         visible={visible}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={onClose}
       >
-        <View style={styles.modalOverlay}>
-          <Animated.View 
-            entering={Platform.OS === 'web' ? undefined : SlideInDown.duration(300)}
-            exiting={Platform.OS === 'web' ? undefined : SlideOutDown.duration(300)}
-            style={styles.modalContent}
-          >
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderContent}>
-                <Text style={styles.modalTitle}>
-                  {formationType === 'defense' ? 'Defans Formasyonu Seçin' : 'Atak Formasyonu Seçin'}
-                </Text>
-                <Text style={styles.modalSubtitle}>
-                  {formationType === 'defense' ? 'Defans için formasyon seçiniz' : 'Atak için formasyon seçin'}
-                </Text>
+        <TouchableOpacity style={styles.unifiedPopupOverlay} activeOpacity={1} onPress={onClose}>
+          <TouchableOpacity activeOpacity={1} onPress={(e: any) => e?.stopPropagation?.()} style={styles.unifiedPopupCardWrap}>
+            <View style={[styles.unifiedPopupCard, { maxHeight: height * 0.78 }]}>
+              {/* Header */}
+              <View style={[styles.modalHeader, { paddingRight: 44 }]}>
+                <View style={styles.modalHeaderContent}>
+                  <Text style={[styles.modalTitle, { color: '#F1F5F9' }]}>
+                    {formationType === 'defense' ? 'Defans Formasyonu Seçin' : 'Atak Formasyonu Seçin'}
+                  </Text>
+                  <Text style={[styles.modalSubtitle, { color: '#94A3B8' }]}>
+                    {formationType === 'defense' ? 'Defans için formasyon seçiniz' : 'Atak için formasyon seçin'}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={onClose} style={{ position: 'absolute', top: 12, right: 12, padding: 4 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close" size={22} color="#94A3B8" />
+                </TouchableOpacity>
               </View>
-            </View>
 
-            {/* ✅ Atak / Defans sekme butonları */}
-            <View style={styles.formationModalTabs}>
-              <TouchableOpacity
-                style={[styles.formationModalTab, formationType === 'attack' && styles.formationModalTabActive]}
-                onPress={() => onTabChange('attack')}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="flash" size={18} color={formationType === 'attack' ? '#FFFFFF' : '#1FA2A6'} />
-                <Text style={[styles.formationModalTabText, formationType === 'attack' && styles.formationModalTabTextActive]}>
-                  Atak
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.formationModalTab,
-                  formationType === 'defense' && styles.formationModalTabActive,
-                  !canSelectDefense && styles.formationModalTabDisabled,
-                ]}
-                onPress={() => {
-                  if (!canSelectDefense) {
-                    showInfo(
-                      'Önce Atak Kadrosu',
-                      'Defans formasyonu seçebilmek için önce atak formasyonunu seçin ve 11 oyuncuyu yerleştirin.'
-                    );
-                    return;
-                  }
-                  onTabChange('defense');
-                }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="shield-checkmark" size={18} color={formationType === 'defense' ? '#FFFFFF' : canSelectDefense ? '#3B82F6' : '#6B7280'} />
-                <Text style={[styles.formationModalTabText, formationType === 'defense' && styles.formationModalTabTextActive, !canSelectDefense && formationType !== 'defense' && styles.formationModalTabTextDisabled]}>
-                  Defans
-                </Text>
-              </TouchableOpacity>
-            </View>
+              {/* ✅ Atak / Defans sekme butonları */}
+              <View style={styles.formationModalTabs}>
+                <TouchableOpacity
+                  style={[styles.formationModalTab, formationType === 'attack' && styles.formationModalTabActive]}
+                  onPress={() => onTabChange('attack')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="flash" size={18} color={formationType === 'attack' ? '#FFFFFF' : '#1FA2A6'} />
+                  <Text style={[styles.formationModalTabText, formationType === 'attack' && styles.formationModalTabTextActive]}>
+                    Atak
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.formationModalTab,
+                    formationType === 'defense' && styles.formationModalTabActive,
+                    !canSelectDefense && styles.formationModalTabDisabled,
+                  ]}
+                  onPress={() => {
+                    if (!canSelectDefense) {
+                      setShowDefenseFirstBanner(true);
+                      return;
+                    }
+                    setShowDefenseFirstBanner(false);
+                    onTabChange('defense');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="shield-checkmark" size={18} color={formationType === 'defense' ? '#FFFFFF' : canSelectDefense ? '#3B82F6' : '#6B7280'} />
+                  <Text style={[styles.formationModalTabText, formationType === 'defense' && styles.formationModalTabTextActive, !canSelectDefense && formationType !== 'defense' && styles.formationModalTabTextDisabled]}>
+                    Defans
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-            {/* Close Button - Absolute Position */}
-            <TouchableOpacity onPress={onClose} style={styles.modalCloseButtonAbsolute}>
-              <Ionicons name="close" size={22} color="#1FA2A6" />
-            </TouchableOpacity>
-
-            {/* Formations Grid - 3 Columns */}
-            <ScrollView 
-              style={styles.modalScroll} 
-              contentContainerStyle={styles.formationGridContainer}
-              showsVerticalScrollIndicator={false}
-            >
-              {filteredFormations.map((formation: any) => {
-                const isCurrentlySelected = formation.id === currentSelectedFormation;
-                return (
-                <View key={formation.id} style={styles.formationGridItem}>
+              {/* ✅ Defans'a atak seçilmeden tıklanınca modal içi banner (toast modal altında kalmıyor) */}
+              {showDefenseFirstBanner && (
+                <View style={styles.defenseFirstBanner}>
+                  <Text style={styles.defenseFirstBannerTitle}>Önce Atak Kadrosu</Text>
+                  <Text style={styles.defenseFirstBannerMessage}>
+                    Defans formasyonu seçebilmek için önce atak formasyonunu seçin ve 11 oyuncuyu yerleştirin.
+                  </Text>
                   <TouchableOpacity
-                    style={[
-                      styles.formationCard,
-                      hoveredFormation?.id === formation.id && styles.formationCardSelected,
-                      isCurrentlySelected && styles.formationCardCurrentlySelected,
-                    ]}
-                    onPress={() => setHoveredFormation(formation)}
+                    style={styles.defenseFirstBannerButton}
+                    onPress={() => setShowDefenseFirstBanner(false)}
                     activeOpacity={0.8}
                   >
-                    {/* ✅ Seçili Formasyon Tik İşareti */}
-                    {isCurrentlySelected && (
-                      <View style={styles.formationSelectedBadge}>
-                        <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                      </View>
-                    )}
-                    {/* Formation ID */}
-                    <Text style={[
-                      styles.formationCardId,
-                      hoveredFormation?.id === formation.id && { color: '#1FA2A6' },
-                      isCurrentlySelected && { color: '#10B981' },
-                    ]}>
-                      {formation.id.replace(/-holding|-false9|-diamond|-attack/g, '')}
-                    </Text>
-
-                    {/* Formation Subtitle - From parentheses */}
-                    <Text style={[
-                      styles.formationCardSubtitle,
-                      isCurrentlySelected && { color: '#10B981' },
-                    ]} numberOfLines={1}>
-                      {(() => {
-                        const parts = formation.name.split('(');
-                        if (parts.length > 1) {
-                          return parts[1].replace(')', '').trim();
-                        }
-                        // If no parentheses, show type or formation style
-                        return formation.type === 'attack' ? 'Attack' : 
-                               formation.type === 'defense' ? 'Defense' : 'Balanced';
-                      })()}
-                    </Text>
+                    <Text style={styles.defenseFirstBannerButtonText}>Tamam</Text>
                   </TouchableOpacity>
                 </View>
-              );})}
-            </ScrollView>
-            
-          </Animated.View>
-        </View>
+              )}
+
+              {/* Formations Grid - 3 Columns - scroll yok, tüm öğeler görünür */}
+              <View style={[styles.formationGridOuter, { maxHeight: height * 0.42 }]}>
+                <View style={styles.formationGridContainer}>
+                {filteredFormations.map((formation: any) => {
+                  const isCurrentlySelected = formation.id === currentSelectedFormation;
+                  return (
+                  <View key={formation.id} style={styles.formationGridItem}>
+                    <TouchableOpacity
+                      style={[
+                        styles.formationCard,
+                        hoveredFormation?.id === formation.id && styles.formationCardSelected,
+                        isCurrentlySelected && styles.formationCardCurrentlySelected,
+                      ]}
+                      onPress={() => setHoveredFormation(formation)}
+                      activeOpacity={0.8}
+                    >
+                      {isCurrentlySelected && (
+                        <View style={styles.formationSelectedBadge}>
+                          <Ionicons name="checkmark-circle" size={16} color="#5EEAD4" />
+                        </View>
+                      )}
+                      <Text style={[
+                        styles.formationCardId,
+                        hoveredFormation?.id === formation.id && { color: '#1FA2A6' },
+                        isCurrentlySelected && { color: '#5EEAD4' },
+                      ]}>
+                        {formation.id.replace(/-holding|-false9|-diamond|-attack/g, '')}
+                      </Text>
+                      <Text style={[
+                        styles.formationCardSubtitle,
+                        isCurrentlySelected && { color: '#5EEAD4' },
+                      ]} numberOfLines={1}>
+                        {(() => {
+                          const parts = formation.name.split('(');
+                          if (parts.length > 1) {
+                            return parts[1].replace(')', '').trim();
+                          }
+                          return formation.type === 'attack' ? 'Attack' : formation.type === 'defense' ? 'Defense' : 'Balanced';
+                        })()}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );})}
+                </View>
+              </View>
+
+              <TouchableOpacity onPress={onClose} style={styles.unifiedPopupButtonKapat} activeOpacity={0.8}>
+                <Text style={styles.unifiedPopupButtonKapatText}>Kapat</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ✅ Formation Preview Modal - Ayrı popup olarak açılıyor */}
@@ -4131,7 +4143,7 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
                     onPress={() => setHoveredFormation(null)}
                     style={styles.formationPreviewCloseBtn}
                   >
-                    <Ionicons name="close" size={20} color="#94A3B8" />
+                    <Ionicons name="close" size={20} color="#FFFFFF" />
                   </TouchableOpacity>
                 </View>
                 <View style={[
@@ -4894,27 +4906,25 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
   return (
     <Modal
       visible={true}
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <Animated.View 
-          entering={Platform.OS === 'web' ? undefined : SlideInDown.duration(300)}
-          exiting={Platform.OS === 'web' ? undefined : SlideOutDown.duration(300)}
-          style={[styles.playerDetailModal, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}
-        >
-          {/* Header - açık temada açık gradient */}
-          <LinearGradient
-            colors={normalizeRatingTo100(player.rating) >= 85 ? ['#C9A44C', '#8B6914'] : isLight ? [themeColors.muted, themeColors.card] : ['#1E3A3A', '#0F2A24']}
-            style={[
-              styles.playerDetailHeader,
-              normalizeRatingTo100(player.rating) >= 85 && styles.playerDetailHeaderElite,
-            ]}
-          >
-            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-              <Ionicons name="close" size={24} color={isLight ? themeColors.foreground : '#FFFFFF'} />
-            </TouchableOpacity>
+      <TouchableOpacity style={styles.unifiedPopupOverlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} onPress={(e: any) => e?.stopPropagation?.()} style={styles.unifiedPopupCardWrap}>
+          <View style={styles.unifiedPopupCard}>
+            {/* Header - Resim 6/7 ile aynı koyu teal */}
+            <LinearGradient
+              colors={normalizeRatingTo100(player.rating) >= 85 ? ['#C9A44C', '#8B6914'] : ['#1E3A3A', '#0F2A24']}
+              style={[
+                styles.playerDetailHeader,
+                normalizeRatingTo100(player.rating) >= 85 && styles.playerDetailHeaderElite,
+                { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingRight: 48 },
+              ]}
+            >
+              <TouchableOpacity onPress={onClose} style={[styles.modalCloseButton, { position: 'absolute', top: 12, right: 12 }]} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close" size={24} color="#94A3B8" />
+              </TouchableOpacity>
 
             <View style={styles.playerDetailHeaderContent}>
               <View style={[
@@ -4927,13 +4937,12 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
               </View>
 
               <View style={styles.playerDetailInfo}>
-                <Text style={[styles.playerDetailName, isLight && { color: themeColors.foreground }]}>
+                <Text style={[styles.playerDetailName, { color: '#F1F5F9' }]}>
                 {formatPlayerDisplayName(player)}
               </Text>
-                <Text style={[styles.playerDetailMeta, isLight && { color: themeColors.mutedForeground }]}>
+                <Text style={[styles.playerDetailMeta, { color: '#94A3B8' }]}>
                   {player.position} • {player.team} • {player.age} yaş
                 </Text>
-                {/* Ortalama reyting (sarı) - sağda */}
                 <View style={styles.playerDetailInfoRow}>
                   <View />
                   <Text style={styles.playerDetailRatingHighlight}>
@@ -4941,9 +4950,9 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
                   </Text>
                 </View>
                 <View style={styles.playerDetailBadges}>
-                  <View style={[styles.nationalityBadge, isLight && { backgroundColor: 'rgba(15, 42, 36, 0.12)' }]}>
-                    <Ionicons name="flag" size={12} color={isLight ? themeColors.foreground : '#FFFFFF'} />
-                    <Text style={[styles.nationalityText, isLight && { color: themeColors.foreground }]}>{player.nationality}</Text>
+                  <View style={styles.nationalityBadge}>
+                    <Ionicons name="flag" size={12} color="#5EEAD4" />
+                    <Text style={styles.nationalityText}>{player.nationality}</Text>
                   </View>
                   {player.form >= 8 && (
                     <View style={styles.formBadgeLarge}>
@@ -4969,10 +4978,9 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
             </View>
           </LinearGradient>
 
-          {/* Stats & Info - SCROLL YOK, TEK SAYFADA SIĞMALI */}
-          <View style={[styles.playerDetailContentNoScroll, isLight && { borderTopColor: themeColors.border }]}>
-            {/* ✅ Oyuncu İstatistikleri - 1 sütun 6 satır dikey layout */}
-            <Text style={[styles.playerDetailSectionTitleCompact, isLight && { color: themeColors.foreground }]}>📊 Oyuncu İstatistikleri</Text>
+          {/* Stats & Info – Resim 2 (Oyun içi performans) popup ile uyumlu: koyu gri satırlar, bar stili */}
+          <View style={[styles.playerDetailContentNoScroll, styles.playerDetailContentNoScrollUnified]}>
+            <Text style={[styles.playerDetailSectionTitleCompact, { color: '#F1F5F9' }]}>📊 Oyuncu İstatistikleri</Text>
             
             <View style={styles.statsGridCompact}>
               {(() => {
@@ -4997,11 +5005,11 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
                   : { pace: stats.pace ?? 70, shooting: stats.shooting ?? 70, passing: stats.passing ?? 70, dribbling: stats.dribbling ?? 70, defending: stats.defending ?? 70, physical: stats.physical ?? 70 };
                 return STAT_KEYS.map((key) => {
                   const value = Math.max(50, Math.min(99, calculatedStats[key]));
-                  const statColor = value >= 80 ? '#1FA2A6' : value >= 70 ? '#F59E0B' : '#9CA3AF';
+                  const statColor = value >= 80 ? '#10B981' : value >= 70 ? '#5EEAD4' : '#94A3B8';
                   return (
-                    <View key={key} style={[styles.statItemCompact, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
-                      <Text style={[styles.statLabelCompact, isLight && { color: themeColors.mutedForeground }]}>{statNames[key] || key}</Text>
-                      <View style={styles.statBarBackgroundCompact}>
+                    <View key={key} style={styles.statItemCompactUnified}>
+                      <Text style={styles.statLabelCompactUnified}>{statNames[key] || key}</Text>
+                      <View style={styles.statBarBackgroundCompactUnified}>
                         <View style={[styles.statBarFillCompact, { width: `${value}%`, backgroundColor: statColor }]} />
                       </View>
                       <Text style={[styles.statValueCompact, { color: statColor }]}>{value}</Text>
@@ -5011,36 +5019,24 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
               })()}
             </View>
 
-            {/* ✅ Form/Pozisyon - yaş üstte (position • team • age) gösterildiği için altta tekrar yok */}
             <View style={styles.additionalInfoCompact}>
-              <View style={[styles.infoChip, isLight && { backgroundColor: 'rgba(31, 162, 166, 0.08)', borderColor: themeColors.border }]}>
-                <Ionicons name="fitness" size={14} color="#1FA2A6" />
-                <Text style={[styles.infoChipText, isLight && { color: themeColors.foreground }]}>Form: {player.form}/10</Text>
+              <View style={styles.infoChipUnified}>
+                <Ionicons name="fitness" size={14} color="#94A3B8" />
+                <Text style={styles.infoChipTextUnified}>Form: {player.form}/10</Text>
               </View>
-              <View style={[styles.infoChip, isLight && { backgroundColor: 'rgba(31, 162, 166, 0.08)', borderColor: themeColors.border }]}>
-                <Ionicons name="shirt" size={14} color="#1FA2A6" />
-                <Text style={[styles.infoChipText, isLight && { color: themeColors.foreground }]}>{player.position}</Text>
+              <View style={styles.infoChipUnified}>
+                <Ionicons name="shirt" size={14} color="#94A3B8" />
+                <Text style={styles.infoChipTextUnified}>{player.position}</Text>
               </View>
             </View>
           </View>
 
-          {/* Close Button */}
-          <View style={[styles.playerDetailActions, isLight && { borderTopColor: themeColors.border }]}>
-            <TouchableOpacity
-              style={styles.playerDetailCloseButton}
-              onPress={onClose}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#1FA2A6', '#047857']}
-                style={styles.playerDetailCloseButtonGradient}
-              >
-                <Text style={styles.playerDetailCloseButtonText}>Kapat</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+          <TouchableOpacity onPress={onClose} style={styles.unifiedPopupButtonKapat} activeOpacity={0.8}>
+            <Text style={styles.unifiedPopupButtonKapatText}>Kapat</Text>
+          </TouchableOpacity>
           </View>
-        </Animated.View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 };
@@ -6799,27 +6795,60 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   
-  // Modal - Design System uyumlu
+  // Modal - Design System uyumlu (bottom-sheet variant – PlayerSelectModal vb. için)
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'flex-end',
-    alignItems: 'center', // ✅ Yatay ortala
-    paddingBottom: 0, // ✅ Alt boşluk yok - zemine yapışık
+    alignItems: 'center',
+    paddingBottom: 0,
   },
   modalContent: {
-    backgroundColor: '#1A2E2A', // ✅ Design System: Slightly lighter than primary for better contrast
+    backgroundColor: '#1A2E2A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    borderBottomLeftRadius: 0, // ✅ Alt köşeler düz - zemine oturur
+    borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    maxHeight: height * 0.85, // ✅ Scroll alanı için yeterli alan bırak
+    maxHeight: height * 0.85,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.2)',
-    borderBottomWidth: 0, // ✅ Alt border yok - zemine yapışık
-    width: '100%', // ✅ Tam genişlik (mobil)
-    maxWidth: 380, // ✅ STANDART: 380px genişlik (tüm popup'lar için standart)
-    marginBottom: 0, // ✅ Alt margin yok - zemine yapışık
+    borderBottomWidth: 0,
+    width: '100%',
+    maxWidth: 380,
+    marginBottom: 0,
+  },
+  // ✅ Birleşik popup stili (Resim 6/7 ile aynı: ortada, koyu kart, Kapat butonu)
+  unifiedPopupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+  },
+  unifiedPopupCardWrap: {
+    width: '100%',
+    maxWidth: 340,
+    maxHeight: height * 0.85,
+  },
+  unifiedPopupCard: {
+    backgroundColor: '#0F1F1F',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.35)',
+  },
+  unifiedPopupButtonKapat: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  unifiedPopupButtonKapatText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
   modalHeader: {
     padding: 12, // ✅ Daha az padding - kompakt header
@@ -6878,6 +6907,40 @@ const styles = StyleSheet.create({
   },
   formationModalTabTextDisabled: {
     color: '#6B7280',
+  },
+  defenseFirstBanner: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 14,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    zIndex: 10,
+  },
+  defenseFirstBannerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FCD34D',
+    marginBottom: 6,
+  },
+  defenseFirstBannerMessage: {
+    fontSize: 13,
+    color: '#FDE68A',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  defenseFirstBannerButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.35)',
+    borderRadius: 10,
+  },
+  defenseFirstBannerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FEF3C7',
   },
   modalCloseButton: {
     width: 36,
@@ -6973,8 +7036,10 @@ const styles = StyleSheet.create({
   modalScroll: {
     flex: 1,
   },
-  
-  // Formation Grid - 3 Columns COMPACT - Eşit boşluklar
+  formationGridOuter: {
+    overflow: 'hidden',
+  },
+  // Formation Grid - 3 Columns COMPACT - Scroll yok, tüm öğeler görünür
   formationGridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -6991,12 +7056,12 @@ const styles = StyleSheet.create({
   formationCard: {
     backgroundColor: '#1E3A3A', // ✅ Design System: Standard card background (not blue)
     borderRadius: 10,
-    padding: 6,
+    padding: 5,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Turkuaz border
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52, // ✅ Daha kompakt
+    minHeight: 44, // ✅ Scroll olmadan 5 satır sığsın
     position: 'relative',
   },
   formationCardId: {
@@ -7031,34 +7096,35 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   
-  // ✅ Formation Preview Modal - Ayrı popup
+  // ✅ Formation Preview Modal - Standart popup (sectionPopupCard uyumlu: geniş, büyük, #0F1F1F)
   formationPreviewOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   formationPreviewModal: {
-    backgroundColor: '#1A3D37', // ✅ Daha açık ton - belirgin
+    backgroundColor: '#0F1F1F',
     borderRadius: 16,
-    padding: 20,
+    padding: 24,
     width: '100%',
-    maxWidth: 380,
+    maxWidth: 440,
+    maxHeight: '85%',
     borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.4)',
+    borderColor: 'rgba(55, 65, 81, 0.6)',
     ...Platform.select({
       ios: {
-        shadowColor: '#1FA2A6',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.4,
         shadowRadius: 12,
       },
       android: {
         elevation: 10,
       },
       web: {
-        boxShadow: '0 4px 24px rgba(31, 162, 166, 0.25)',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
       },
     }),
   },
@@ -7082,7 +7148,7 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(148, 163, 184, 0.15)',
+    backgroundColor: '#374151',
     borderRadius: 16,
   },
   formationPreviewTypeBadge: {
@@ -7109,6 +7175,11 @@ const styles = StyleSheet.create({
   },
   formationPreviewSection: {
     marginBottom: 12,
+    backgroundColor: '#374151',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(55, 65, 81, 0.8)',
   },
   formationPreviewSectionTitle: {
     fontSize: 13,
@@ -7139,12 +7210,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    backgroundColor: '#374151',
     padding: 12,
     borderRadius: 10,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
+    borderColor: 'rgba(55, 65, 81, 0.8)',
   },
   formationPreviewBestForLabel: {
     fontWeight: '700',
@@ -7156,36 +7227,22 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
-  // ✅ Formasyon Popülerlik Stilleri - DİKKAT ÇEKİCİ TASARIM
+  // ✅ Formasyon Popülerlik - Standart kart rengi (#374151)
   formationPopularitySection: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)', // Kırmızımsı arka plan
+    backgroundColor: '#374151',
     padding: 14,
     borderRadius: 12,
     marginBottom: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(249, 115, 22, 0.6)', // Turuncu border
-    ...Platform.select({
-      ios: {
-        shadowColor: '#F97316',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    borderWidth: 1,
+    borderColor: 'rgba(55, 65, 81, 0.8)',
   },
   formationPopularityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 10,
-    backgroundColor: 'rgba(249, 115, 22, 0.2)', // Turuncu header arka planı
     padding: 8,
     borderRadius: 8,
-    marginHorizontal: -6,
-    marginTop: -6,
   },
   formationPopularitySectionTitle: {
     fontSize: 14,
@@ -7234,14 +7291,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    backgroundColor: '#374151',
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.4)',
+    borderColor: 'rgba(55, 65, 81, 0.8)',
   },
   formationPreviewCancelText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: '#FFFFFF',
   },
   formationPreviewSelectBtn: {
     flex: 2,
@@ -8015,6 +8072,11 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
   },
+  // Resim 2 (Oyun içi performans) popup ile uyumlu: üst çizgi koyu gri
+  playerDetailContentNoScrollUnified: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(55, 65, 81, 0.6)',
+  },
   playerDetailSectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -8048,6 +8110,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row', // ✅ Yatay içerik: Label | Bar | Value
     alignItems: 'center',
     gap: 10,
+  },
+  // Resim 2 ile uyumlu: koyu gri satır, bar arka planı koyu
+  statItemCompactUnified: {
+    width: '100%',
+    backgroundColor: '#374151',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(55, 65, 81, 0.8)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statLabelCompactUnified: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#E2E8F0',
+    width: 55,
+  },
+  statBarBackgroundCompactUnified: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#1F2937',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  infoChipUnified: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#374151',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(55, 65, 81, 0.8)',
+  },
+  infoChipTextUnified: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#E2E8F0',
   },
   // statItemCompactHeader artık kullanılmıyor - dikey layout'ta label/bar/value ayrı
   statLabelCompact: {

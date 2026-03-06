@@ -2390,185 +2390,130 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
         animationType="fade"
         onRequestClose={() => setShowLockPopup(false)}
       >
-        <Pressable
-          style={styles.savePopupOverlay}
-          onPress={() => setShowLockPopup(false)}
-        >
-          <Pressable onPress={(e) => e.stopPropagation()} style={[styles.lockPopupContainer, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
-            {/* Icon */}
-            <View style={[styles.lockPopupIcon, {
-              backgroundColor: ratingTimeInfo.isLocked 
-                ? 'rgba(239, 68, 68, 0.15)' 
-                : 'rgba(16, 185, 129, 0.15)',
-            }]}>
-              <Ionicons 
-                name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
-                size={32} 
-                color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
-              />
+        <Pressable style={styles.unifiedPopupOverlay} onPress={() => setShowLockPopup(false)}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.unifiedPopupCardWrap}>
+            <View style={[styles.unifiedPopupCard, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
+              <View style={[styles.lockPopupIcon, {
+                backgroundColor: ratingTimeInfo.isLocked ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+              }]}>
+                <Ionicons name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} size={32} color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} />
+              </View>
+              <Text style={[styles.lockPopupTitle, { color: ratingTimeInfo.isLocked ? '#EF4444' : '#10B981' }]}>
+                {ratingTimeInfo.isLocked ? 'Değerlendirme Kilitli' : 'Değerlendirme Açık'}
+              </Text>
+              <Text style={[styles.lockPopupDesc, isLight && { color: themeColors.mutedForeground }]}>
+                {ratingTimeInfo.lockReason === 'not_started' && (
+                  <>Maç henüz başlamadı. Değerlendirme, maç bittikten sonra <Text style={{ fontWeight: '700', color: '#10B981' }}>24 saat</Text> boyunca açık olacak.</>
+                )}
+                {ratingTimeInfo.lockReason === 'live' && (
+                  <>Maç devam ediyor. Değerlendirme, maç bittikten sonra <Text style={{ fontWeight: '700', color: '#10B981' }}>24 saat</Text> boyunca açık olacak.</>
+                )}
+                {ratingTimeInfo.lockReason === 'expired' && (
+                  <>Değerlendirme süresi doldu. Maç bittikten sonra <Text style={{ fontWeight: '700', color: '#EF4444' }}>24 saat</Text> içinde değerlendirme yapabilirsiniz.</>
+                )}
+                {ratingTimeInfo.lockReason === 'open' && (
+                  <>Değerlendirme açık! Kalan süre: <Text style={{ fontWeight: '700', color: '#10B981' }}>{ratingTimeInfo.message}</Text>. Bu süre içinde TD ve oyuncuları değerlendirebilirsiniz.</>
+                )}
+                {ratingTimeInfo.lockReason === 'unknown' && (
+                  <>Maç durumu belirsiz. Lütfen daha sonra tekrar deneyin.</>
+                )}
+              </Text>
+              <View style={styles.lockPopupInfoCards}>
+                <View style={[styles.lockPopupInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                  <Ionicons name="timer-outline" size={20} color="#1FA2A6" />
+                  <Text style={[styles.lockPopupInfoCardTitle, isLight && { color: themeColors.foreground }]}>Kilit Açılışı</Text>
+                  <Text style={[styles.lockPopupInfoCardDesc, isLight && { color: themeColors.mutedForeground }]}>Maç bitiş düdüğü</Text>
+                </View>
+                <View style={[styles.lockPopupInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                  <Ionicons name="hourglass-outline" size={20} color="#F59E0B" />
+                  <Text style={[styles.lockPopupInfoCardTitle, isLight && { color: themeColors.foreground }]}>Süre</Text>
+                  <Text style={[styles.lockPopupInfoCardDesc, isLight && { color: themeColors.mutedForeground }]}>24 saat</Text>
+                </View>
+                <View style={[styles.lockPopupInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#EF4444" />
+                  <Text style={[styles.lockPopupInfoCardTitle, isLight && { color: themeColors.foreground }]}>Kilit Kapanışı</Text>
+                  <Text style={[styles.lockPopupInfoCardDesc, isLight && { color: themeColors.mutedForeground }]}>24 saat sonra</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={styles.unifiedPopupButtonKapat} onPress={() => setShowLockPopup(false)} activeOpacity={0.8}>
+                <Text style={styles.unifiedPopupButtonKapatText}>Anladım</Text>
+              </TouchableOpacity>
             </View>
-
-            {/* Title */}
-            <Text style={[styles.lockPopupTitle, {
-              color: ratingTimeInfo.isLocked ? '#EF4444' : '#10B981',
-            }]}>
-              {ratingTimeInfo.isLocked ? 'Değerlendirme Kilitli' : 'Değerlendirme Açık'}
-            </Text>
-
-            {/* Description */}
-            <Text style={[styles.lockPopupDesc, isLight && { color: themeColors.mutedForeground }]}>
-              {ratingTimeInfo.lockReason === 'not_started' && (
-                <>Maç henüz başlamadı. Değerlendirme, maç bittikten sonra <Text style={{ fontWeight: '700', color: '#10B981' }}>24 saat</Text> boyunca açık olacak.</>
-              )}
-              {ratingTimeInfo.lockReason === 'live' && (
-                <>Maç devam ediyor. Değerlendirme, maç bittikten sonra <Text style={{ fontWeight: '700', color: '#10B981' }}>24 saat</Text> boyunca açık olacak.</>
-              )}
-              {ratingTimeInfo.lockReason === 'expired' && (
-                <>Değerlendirme süresi doldu. Maç bittikten sonra <Text style={{ fontWeight: '700', color: '#EF4444' }}>24 saat</Text> içinde değerlendirme yapabilirsiniz.</>
-              )}
-              {ratingTimeInfo.lockReason === 'open' && (
-                <>Değerlendirme açık! Kalan süre: <Text style={{ fontWeight: '700', color: '#10B981' }}>{ratingTimeInfo.message}</Text>. Bu süre içinde TD ve oyuncuları değerlendirebilirsiniz.</>
-              )}
-              {ratingTimeInfo.lockReason === 'unknown' && (
-                <>Maç durumu belirsiz. Lütfen daha sonra tekrar deneyin.</>
-              )}
-            </Text>
-
-            {/* Info Cards */}
-            <View style={styles.lockPopupInfoCards}>
-              <View style={[styles.lockPopupInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
-                <Ionicons name="timer-outline" size={20} color="#1FA2A6" />
-                <Text style={[styles.lockPopupInfoCardTitle, isLight && { color: themeColors.foreground }]}>Kilit Açılışı</Text>
-                <Text style={[styles.lockPopupInfoCardDesc, isLight && { color: themeColors.mutedForeground }]}>Maç bitiş düdüğü</Text>
-              </View>
-              <View style={[styles.lockPopupInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
-                <Ionicons name="hourglass-outline" size={20} color="#F59E0B" />
-                <Text style={[styles.lockPopupInfoCardTitle, isLight && { color: themeColors.foreground }]}>Süre</Text>
-                <Text style={[styles.lockPopupInfoCardDesc, isLight && { color: themeColors.mutedForeground }]}>24 saat</Text>
-              </View>
-              <View style={[styles.lockPopupInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
-                <Ionicons name="lock-closed-outline" size={20} color="#EF4444" />
-                <Text style={[styles.lockPopupInfoCardTitle, isLight && { color: themeColors.foreground }]}>Kilit Kapanışı</Text>
-                <Text style={[styles.lockPopupInfoCardDesc, isLight && { color: themeColors.mutedForeground }]}>24 saat sonra</Text>
-              </View>
-            </View>
-
-            {/* Close Button */}
-            <TouchableOpacity
-              style={[styles.lockPopupCloseBtn, isLight && { backgroundColor: 'rgba(31, 162, 166, 0.12)', borderColor: themeColors.border }]}
-              onPress={() => setShowLockPopup(false)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.lockPopupCloseBtnText, isLight && { color: themeColors.foreground }]}>Anladım</Text>
-            </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
 
-      {/* 🔒 OYUNCU KİLİT POPUP - Oynamayan oyuncular için */}
+      {/* 🔒 OYUNCU KİLİT POPUP – Resim 2/3 ile aynı stil */}
       <Modal
         visible={lockedPlayerInfo !== null}
         transparent
         animationType="fade"
         onRequestClose={() => setLockedPlayerInfo(null)}
       >
-        <Pressable
-          style={styles.savePopupOverlay}
-          onPress={() => setLockedPlayerInfo(null)}
-        >
-          <Pressable onPress={(e) => e.stopPropagation()} style={[styles.lockPopupContainer, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
-            {/* Icon */}
-            <View style={[styles.lockPopupIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-              <Ionicons name="person-remove" size={32} color="#EF4444" />
+        <Pressable style={styles.unifiedPopupOverlay} onPress={() => setLockedPlayerInfo(null)}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.unifiedPopupCardWrap}>
+            <View style={[styles.unifiedPopupCard, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
+              <View style={[styles.lockPopupIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                <Ionicons name="person-remove" size={32} color="#EF4444" />
+              </View>
+              <Text style={[styles.lockPopupTitle, { color: '#EF4444' }]}>
+                Oyuncu Değerlendirilemez
+              </Text>
+              <Text style={[styles.lockPopupDesc, isLight && { color: themeColors.mutedForeground }]}>
+                <Text style={{ fontWeight: '700', color: isLight ? themeColors.foreground : '#F1F5F9' }}>{lockedPlayerInfo?.name}</Text> bu maçta {lockedPlayerInfo?.reason}.
+                {'\n\n'}
+                Sadece maçta oynayan oyuncular (ilk 11 + sonradan oyuna giren) değerlendirilebilir.
+              </Text>
+              <TouchableOpacity style={styles.unifiedPopupButtonKapat} onPress={() => setLockedPlayerInfo(null)} activeOpacity={0.8}>
+                <Text style={styles.unifiedPopupButtonKapatText}>Anladım</Text>
+              </TouchableOpacity>
             </View>
-
-            {/* Title */}
-            <Text style={[styles.lockPopupTitle, { color: '#EF4444' }]}>
-              Oyuncu Değerlendirilemez
-            </Text>
-
-            {/* Description */}
-            <Text style={[styles.lockPopupDesc, isLight && { color: themeColors.mutedForeground }]}>
-              <Text style={{ fontWeight: '700', color: isLight ? themeColors.foreground : '#F1F5F9' }}>{lockedPlayerInfo?.name}</Text> bu maçta {lockedPlayerInfo?.reason}.
-              {'\n\n'}
-              Sadece maçta oynayan oyuncular (ilk 11 + sonradan oyuna giren) değerlendirilebilir.
-            </Text>
-
-            {/* Close Button */}
-            <TouchableOpacity
-              style={[styles.lockPopupCloseBtn, isLight && { backgroundColor: 'rgba(31, 162, 166, 0.12)', borderColor: themeColors.border }]}
-              onPress={() => setLockedPlayerInfo(null)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.lockPopupCloseBtnText, isLight && { color: themeColors.foreground }]}>Anladım</Text>
-            </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
 
-      {/* 👁️ İZLEME MODU POPUP - Birleşik (Kırmızı izleme modu + 24 saat kuralı) */}
+      {/* 👁️ İZLEME MODU POPUP – Resim 2/3 ile aynı boyut ve stil (340, #0F1F1F, Kapat tarzı buton) */}
       <Modal
         visible={showViewOnlyPopup}
         transparent
         animationType="fade"
         onRequestClose={() => setShowViewOnlyPopup(false)}
       >
-        <Pressable
-          style={styles.savePopupOverlay}
-          onPress={() => setShowViewOnlyPopup(false)}
-        >
-          <Pressable onPress={(e) => e.stopPropagation()} style={[styles.lockPopupContainer, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
-            {/* Icon */}
-            <View style={[styles.lockPopupIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-              <Ionicons name="eye-outline" size={32} color="#EF4444" />
-            </View>
-
-            {/* Title */}
-            <Text style={[styles.lockPopupTitle, { color: '#EF4444' }]}>
-              İzleme Modu
-            </Text>
-
-            {/* Description */}
-            <Text style={[styles.lockPopupDesc, isLight && { color: themeColors.mutedForeground }]}>
-              <Text style={{ fontWeight: '700', color: '#EF4444' }}>Kadro tahmini yapmadığınız</Text> için bu maç için değerlendirme yapamazsınız.
-              {'\n\n'}
-              Topluluk puanlarını görüntüleyebilir ancak kendi değerlendirmenizi yapamazsınız.
-            </Text>
-
-            {/* 24 Saat Kuralı Info Card */}
-            <View style={[styles.viewOnlyRuleCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
-              <View style={styles.viewOnlyRuleHeader}>
-                <Ionicons name="time-outline" size={18} color="#10B981" />
-                <Text style={[styles.viewOnlyRuleTitle, isLight && { color: themeColors.foreground }]}>Değerlendirme Kuralı</Text>
+        <Pressable style={styles.unifiedPopupOverlay} onPress={() => setShowViewOnlyPopup(false)}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.unifiedPopupCardWrap}>
+            <View style={[styles.unifiedPopupCard, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(31, 162, 166, 0.2)', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
+                <Ionicons name="eye-outline" size={28} color="#5EEAD4" />
               </View>
-              <Text style={[styles.viewOnlyRuleText, isLight && { color: themeColors.mutedForeground }]}>
-                Bu maça kadro tahmini yapan kullanıcılar,{' '}
-                <Text style={{ fontWeight: '700', color: '#10B981' }}>maçın bitişinden sonraki 24 saat boyunca</Text>{' '}
-                TD ve oyuncuları değerlendirebilir.
+              <Text style={{ fontSize: 18, fontWeight: '700', color: isLight ? themeColors.foreground : '#F1F5F9', textAlign: 'center', marginBottom: 12 }}>
+                İzleme Modu
               </Text>
-            </View>
-
-            {/* Gelecek Maçlar Info Card */}
-            <View style={[styles.viewOnlyInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
-              <Ionicons name="bulb-outline" size={20} color="#F59E0B" />
-              <Text style={[styles.viewOnlyInfoText, isLight && { color: themeColors.mutedForeground }]}>
-                Maçlara ait tahmin yaparak puan kazanmak için maç başlamadan önce kadronuzu oluşturmalısınız.
+              <Text style={{ fontSize: 14, color: isLight ? themeColors.mutedForeground : '#94A3B8', textAlign: 'center', lineHeight: 22, marginBottom: 16 }}>
+                <Text style={{ fontWeight: '700', color: isLight ? themeColors.foreground : '#E2E8F0' }}>Kadro tahmini yapmadığınız</Text> için bu maç için değerlendirme yapamazsınız.
+                {'\n\n'}
+                Topluluk puanlarını görüntüleyebilir ancak kendi değerlendirmenizi yapamazsınız.
               </Text>
+              <View style={[styles.viewOnlyRuleCard, { backgroundColor: 'rgba(94, 234, 212, 0.06)', borderColor: 'rgba(94, 234, 212, 0.2)' }, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                <View style={styles.viewOnlyRuleHeader}>
+                  <Ionicons name="time-outline" size={18} color="#10B981" />
+                  <Text style={[styles.viewOnlyRuleTitle, isLight && { color: themeColors.foreground }]}>Değerlendirme Kuralı</Text>
+                </View>
+                <Text style={[styles.viewOnlyRuleText, isLight && { color: themeColors.mutedForeground }]}>
+                  Bu maça kadro tahmini yapan kullanıcılar,{' '}
+                  <Text style={{ fontWeight: '700', color: '#10B981' }}>maçın bitişinden sonraki 24 saat boyunca</Text>{' '}
+                  TD ve oyuncuları değerlendirebilir.
+                </Text>
+              </View>
+              <View style={[styles.viewOnlyInfoCard, { backgroundColor: 'rgba(245, 158, 11, 0.08)', borderColor: 'rgba(245, 158, 11, 0.2)', marginTop: 12 }, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                <Ionicons name="bulb-outline" size={20} color="#F59E0B" />
+                <Text style={[styles.viewOnlyInfoText, isLight && { color: themeColors.mutedForeground }]}>
+                  Maçlara ait tahmin yaparak puan kazanmak için maç başlamadan önce kadronuzu oluşturmalısınız.
+                </Text>
+              </View>
+              <TouchableOpacity style={[styles.unifiedPopupButtonKapat, { marginTop: 20 }]} onPress={() => setShowViewOnlyPopup(false)} activeOpacity={0.8}>
+                <Text style={styles.unifiedPopupButtonKapatText}>Anladım, İzlemeye Devam Et</Text>
+              </TouchableOpacity>
             </View>
-
-            {/* Close Button - belirgin CTA */}
-            <TouchableOpacity
-              style={[
-                styles.lockPopupCloseBtn,
-                isLight
-                  ? { backgroundColor: '#1FA2A6', borderColor: '#1FA2A6', borderWidth: 2, paddingVertical: 14, paddingHorizontal: 24 }
-                  : { backgroundColor: '#1FA2A6', borderColor: '#1FA2A6', borderWidth: 0, paddingVertical: 14, paddingHorizontal: 24 },
-              ]}
-              onPress={() => setShowViewOnlyPopup(false)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.lockPopupCloseBtnText, { color: '#FFFFFF', fontWeight: '700', fontSize: 16 }]}>Anladım, İzlemeye Devam Et</Text>
-            </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
@@ -4609,6 +4554,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1FA2A6',
+  },
+
+  // ✅ Birleşik popup stili (Resim 2/3 ile uyumlu: genişlik 340, zemin #0F1F1F, Kapat butonu)
+  unifiedPopupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+  },
+  unifiedPopupCardWrap: {
+    width: '100%',
+    maxWidth: 340,
+  },
+  unifiedPopupCard: {
+    backgroundColor: '#0F1F1F',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.35)',
+  },
+  unifiedPopupButtonKapat: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  unifiedPopupButtonKapatText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
 
   // 🗑️ DELETE CONFIRM POPUP STYLES

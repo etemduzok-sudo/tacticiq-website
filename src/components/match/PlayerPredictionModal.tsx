@@ -274,35 +274,36 @@ const PlayerPredictionModal = ({
   return (
     <Modal
       visible={true}
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <Animated.View
-          entering={isWeb ? undefined : SlideInDown.duration(300)}
-          exiting={isWeb ? undefined : SlideOutDown.duration(300)}
-          style={[styles.playerModalContent, { backgroundColor: themeColors.popover }]}
-        >
+      <TouchableOpacity style={styles.unifiedPopupOverlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} onPress={(e: any) => e?.stopPropagation?.()} style={styles.unifiedPopupCardWrap}>
+          <Animated.View
+            entering={isWeb ? undefined : undefined}
+            exiting={isWeb ? undefined : undefined}
+            style={[styles.playerModalContent, styles.unifiedPopupCard]}
+          >
           <LinearGradient
-            colors={isLight ? [themeColors.muted, themeColors.card] : ['#1E3A3A', '#0F2A24']}
-            style={styles.playerModalHeader}
+            colors={['#1E3A3A', '#0F2A24']}
+            style={[styles.playerModalHeader, { borderTopLeftRadius: 20, borderTopRightRadius: 20 }]}
           >
             <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-              <Ionicons name="close" size={24} color={themeColors.foreground} />
+              <Ionicons name="close" size={24} color="#94A3B8" />
             </TouchableOpacity>
 
             <View style={styles.playerModalInfo}>
               <View style={styles.playerNumberCircle}>
-                <Text style={[styles.playerNumberLarge, { color: themeColors.foreground }]}>{player.number ?? player.shirt_number ?? player.jersey_number ?? '-'}</Text>
+                <Text style={[styles.playerNumberLarge, { color: '#FFFFFF' }]}>{player.number ?? player.shirt_number ?? player.jersey_number ?? '-'}</Text>
                 <View style={styles.playerRatingCircle}>
                   <Text style={styles.playerRatingSmall}>{player.rating}</Text>
                 </View>
               </View>
 
               <View style={styles.playerDetails}>
-                <Text style={[styles.playerNameLarge, { color: themeColors.foreground }]}>{formatPlayerDisplayName(player)}</Text>
-                <Text style={[styles.playerPositionModal, { color: themeColors.mutedForeground }]}>
+                <Text style={[styles.playerNameLarge, { color: '#F1F5F9' }]}>{formatPlayerDisplayName(player)}</Text>
+                <Text style={[styles.playerPositionModal, { color: '#94A3B8' }]}>
                   {player.position} • Form: <Text style={styles.formText}>{player.form}%</Text>
                 </Text>
               </View>
@@ -1323,8 +1324,8 @@ const PlayerPredictionModal = ({
           )}
 
           {isLocked && !permanentLockReason && (
-            <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: isLight ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.12)', borderTopWidth: 1, borderTopColor: 'rgba(239, 68, 68, 0.2)' }}>
-              <Text style={{ fontSize: 12, color: isLight ? '#B91C1C' : '#FCA5A5', textAlign: 'center', lineHeight: 18 }}>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: 'rgba(239, 68, 68, 0.12)', borderTopWidth: 1, borderTopColor: 'rgba(239, 68, 68, 0.2)' }}>
+              <Text style={{ fontSize: 12, color: '#FCA5A5', textAlign: 'center', lineHeight: 18 }}>
                 {isMasterLocked
                   ? 'Önce sayfa altındaki master kilidi açın. Sonra bu oyuncu kartına gelerek "Tahminler Kilitli" butonuna basıp oyuncu kilidini açın.'
                   : 'Değiştirmek için alttaki "Tahminler Kilitli" butonuna basarak bu oyuncunun kilidini açın.'}
@@ -1332,19 +1333,16 @@ const PlayerPredictionModal = ({
             </View>
           )}
 
-          <View style={[styles.playerModalActions, { backgroundColor: themeColors.popover, borderTopColor: themeColors.border }]}>
+          <View style={[styles.playerModalActions, styles.unifiedPopupActions]}>
             <TouchableOpacity 
-              style={[styles.cancelButton, isMasterLocked && { opacity: 0.5 }]} 
+              style={[styles.unifiedPopupButtonKapat, styles.cancelButtonFlex, isMasterLocked && { opacity: 0.5 }]} 
               onPress={() => {
-                if (onCancel) {
-                  onCancel();
-                } else {
-                  onClose();
-                }
+                if (onCancel) onCancel();
+                else onClose();
               }} 
               activeOpacity={0.7}
             >
-              <Text style={[styles.cancelButtonText, { color: themeColors.foreground }]}>İptal Et</Text>
+              <Text style={styles.unifiedPopupButtonKapatText}>İptal Et</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[
@@ -1380,7 +1378,8 @@ const PlayerPredictionModal = ({
             </TouchableOpacity>
           </View>
         </Animated.View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 };
@@ -1393,15 +1392,54 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
-  playerModalContent: {
-    backgroundColor: '#1E3A3A',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  unifiedPopupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+  },
+  unifiedPopupCardWrap: {
+    width: '100%',
+    maxWidth: 340,
+    maxHeight: height * 0.85,
+  },
+  unifiedPopupCard: {
+    backgroundColor: '#0F1F1F',
+    borderRadius: 20,
+    padding: 0,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.35)',
     overflow: 'hidden',
-    width: 380,
-    maxWidth: 380,
-    maxHeight: (height * 0.9),
-    alignSelf: 'center',
+    maxHeight: height * 0.85,
+  },
+  unifiedPopupButtonKapat: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  unifiedPopupButtonKapatText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  unifiedPopupActions: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(31, 162, 166, 0.2)',
+    backgroundColor: '#0F1F1F',
+  },
+  cancelButtonFlex: {
+    flex: 1,
+  },
+  playerModalContent: {
+    overflow: 'hidden',
+    maxHeight: height * 0.85,
   },
   playerModalHeader: {
     padding: 10,

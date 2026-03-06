@@ -28,30 +28,15 @@ npm run ios
 
 ## 🔧 Web Modu Sorunları
 
-### Sorun:
-```
-GET http://localhost:8081/index.bundle?platform=web...
-ERR_ABORTED 500 (Internal Server Error)
-MIME type ('application/json') is not executable
-```
-
-### Neden:
-- Expo Router web modunda Metro bundler ile sorun çıkarıyor
-- `routerRoot=app` parametresi var ama app/ klasörü yok veya sorunlu
-
-### Geçici Çözüm:
-Eğer web modunda görmek istiyorsanız:
-1. `app/` klasörünü geçici olarak devre dışı bırakın
-2. `scripts/start-web.ps1` script'ini kullanın
-
-```powershell
-.\scripts\start-web.ps1
-```
-
-Bu script:
-- `app/` klasörünü `app.disabled` olarak yeniden adlandırır
-- Cache temizler
-- Web modunu başlatır
+### Çözüm (500 / routerRoot hatası)
+1. **Port 8081/8083 doluysa** önce: `npm run web:kill` çalıştır. Sonra devam et.
+2. **Sadece bir terminalde** şunu çalıştır:
+   ```bash
+   npm run web:dev
+   ```
+   (`web:dev` zaten önce `web:kill` çalıştırır; yine de "Port zaten kullanılıyor" hatası alırsan bir kez elle `npm run web:kill` yap.)
+3. "TARAYICIDA SADECE BUNU AC: http://localhost:8081" yazısını gördükten sonra tarayıcıda **sadece** http://localhost:8081 aç. **8083 veya başka port açma** — 500 alırsın.
+4. Eski bir sekmede 8081 açıksa **o sekmeyi kapat**, yeni sekmede tekrar http://localhost:8081 aç.
 
 ---
 

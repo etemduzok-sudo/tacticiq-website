@@ -1,9 +1,16 @@
 # Web için Expo Router'ı devre dışı bırak ve web'i başlat
-# Kullanım: .\scripts\start-web.ps1
+# Kullanım: .\scripts\start-web.ps1  veya  npm run web:start
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "WEB BASLATILIYOR (Expo Router Devre Disi)" -ForegroundColor Yellow
 Write-Host "========================================`n" -ForegroundColor Cyan
+
+# Önce app.disabled varsa geri al (önceki çalıştırmadan kalmış olabilir)
+if (Test-Path "app.disabled") {
+    Write-Host "app.disabled geri aliniyor (app/ olarak)..." -ForegroundColor Yellow
+    Rename-Item -Path "app.disabled" -NewName "app" -Force
+    Write-Host "✅ app/ geri yuklendi" -ForegroundColor Green
+}
 
 # app/ dizinini geçici olarak devre dışı bırak
 if (Test-Path "app") {

@@ -32,7 +32,6 @@
       "favicon": "./assets/logo.png"
     },
     "plugins": [
-      "expo-router",
       [
         "expo-build-properties",
         {
@@ -49,16 +48,9 @@
     ],
     "extra": {
       "newArchEnabled": true,
-      "router": {
-        "origin": false,
-        "root": "./app"
-      },
       "eas": {
         "projectId": "f33d2180-e311-47ac-b004-59e271e144f4"
       }
     },
-    "experiments": {
-      "typedRoutes": false
-    }
   }
 }
