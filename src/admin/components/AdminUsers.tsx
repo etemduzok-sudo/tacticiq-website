@@ -8,6 +8,8 @@ interface User {
   id: string;
   email: string;
   name: string;
+  /** İlk kayıtta kullanıcının belirlediği kullanıcı adı (user_profiles.nickname) */
+  nickname?: string;
   isPro: boolean;
   createdAt: string;
   lastActive: string;
@@ -17,11 +19,11 @@ interface User {
 }
 
 const MOCK_USERS: User[] = [
-  { id: '1', email: 'user1@example.com', name: 'Ahmet Yılmaz', isPro: true, createdAt: '2025-01-15', lastActive: '2 saat önce', predictions: 245, points: 12500, status: 'active' },
-  { id: '2', email: 'user2@example.com', name: 'Mehmet Demir', isPro: false, createdAt: '2025-02-20', lastActive: '1 gün önce', predictions: 89, points: 3200, status: 'active' },
-  { id: '3', email: 'user3@example.com', name: 'Ayşe Kaya', isPro: true, createdAt: '2024-12-10', lastActive: '3 saat önce', predictions: 512, points: 28000, status: 'active' },
-  { id: '4', email: 'user4@example.com', name: 'Fatma Öz', isPro: false, createdAt: '2025-03-01', lastActive: '1 hafta önce', predictions: 15, points: 450, status: 'suspended' },
-  { id: '5', email: 'user5@example.com', name: 'Ali Çelik', isPro: false, createdAt: '2025-01-28', lastActive: '5 gün önce', predictions: 67, points: 2100, status: 'active' },
+  { id: '1', email: 'user1@example.com', name: 'Ahmet Yılmaz', nickname: 'ahmety', isPro: true, createdAt: '2025-01-15', lastActive: '2 saat önce', predictions: 245, points: 12500, status: 'active' },
+  { id: '2', email: 'user2@example.com', name: 'Mehmet Demir', nickname: 'mehmetd', isPro: false, createdAt: '2025-02-20', lastActive: '1 gün önce', predictions: 89, points: 3200, status: 'active' },
+  { id: '3', email: 'user3@example.com', name: 'Ayşe Kaya', nickname: 'aysekaya', isPro: true, createdAt: '2024-12-10', lastActive: '3 saat önce', predictions: 512, points: 28000, status: 'active' },
+  { id: '4', email: 'user4@example.com', name: 'Fatma Öz', nickname: 'fatmaoz', isPro: false, createdAt: '2025-03-01', lastActive: '1 hafta önce', predictions: 15, points: 450, status: 'suspended' },
+  { id: '5', email: 'user5@example.com', name: 'Ali Çelik', nickname: 'alicl', isPro: false, createdAt: '2025-01-28', lastActive: '5 gün önce', predictions: 67, points: 2100, status: 'active' },
 ];
 
 export default function AdminUsers() {
@@ -35,7 +37,8 @@ export default function AdminUsers() {
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.nickname && user.nickname.toLowerCase().includes(searchQuery.toLowerCase()));
     
     if (filter === 'pro') return matchesSearch && user.isPro;
     if (filter === 'suspended') return matchesSearch && user.status !== 'active';
@@ -89,6 +92,9 @@ export default function AdminUsers() {
         <View style={styles.userDetails}>
           <View style={styles.userNameRow}>
             <Text style={styles.userName}>{item.name}</Text>
+            {item.nickname ? (
+              <Text style={styles.userNickname}>@{item.nickname}</Text>
+            ) : null}
             {item.isPro && (
               <View style={styles.proBadge}>
                 <Ionicons name="star" size={12} color="#FFF" />
@@ -172,6 +178,9 @@ export default function AdminUsers() {
                     <Text style={styles.modalAvatarText}>{selectedUser.name.charAt(0)}</Text>
                   </View>
                   <Text style={styles.modalUserName}>{selectedUser.name}</Text>
+                  {selectedUser.nickname ? (
+                    <Text style={styles.modalUserNickname}>@{selectedUser.nickname}</Text>
+                  ) : null}
                   <Text style={styles.modalUserEmail}>{selectedUser.email}</Text>
                   <TouchableOpacity
                     style={styles.modalClose}
@@ -358,6 +367,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: DARK_MODE.text,
   },
+  userNickname: {
+    fontSize: 13,
+    color: DARK_MODE.textSecondary,
+    marginLeft: 6,
+  },
   proBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -444,6 +458,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: DARK_MODE.text,
+  },
+  modalUserNickname: {
+    fontSize: 15,
+    color: DARK_MODE.textSecondary,
+    marginTop: 2,
   },
   modalUserEmail: {
     fontSize: 14,

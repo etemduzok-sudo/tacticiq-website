@@ -686,6 +686,8 @@
     "welcomeTitle": "Kayıt Başarılı!",
     "welcomeMessage": "Hoş geldiniz!",
     "registerFailed": "Kayıt başarısız oldu",
+    "emailConfirmTitle": "E-postanızı doğrulayın",
+    "emailConfirmMessage": "Kayıt başarılı. E-postanıza gelen doğrulama linkine tıklayın, ardından giriş yapabilirsiniz. Spam klasörünü de kontrol edin.",
     "errorOccurred": "Bir hata oluştu",
     "socialRegisterFailed": "ile kayıt başarısız"
   },
@@ -808,6 +810,10 @@
   "changePassword": {
     "title": "Şifre Değiştir",
     "description": "Güvenliğiniz için şifrenizi düzenli olarak değiştirin.",
+    "setPasswordTitle": "Şifre Belirle",
+    "setPasswordDescription": "Google/Apple ile giriş yaptınız. İsterseniz burada bir şifre belirleyerek e-posta ile de giriş yapabilirsiniz.",
+    "setPasswordButton": "Şifreyi Kaydet",
+    "submitButton": "Şifreyi Değiştir",
     "currentPasswordRequired": "Mevcut şifrenizi girin",
     "newPasswordRequired": "Yeni şifrenizi girin",
     "passwordMinLength": "Şifre en az 6 karakter olmalı",

@@ -687,6 +687,8 @@
     "welcomeTitle": "Registration Successful!",
     "welcomeMessage": "Welcome!",
     "registerFailed": "Registration failed",
+    "emailConfirmTitle": "Verify your email",
+    "emailConfirmMessage": "Registration successful. Click the verification link we sent to your email, then you can sign in. Check your spam folder too.",
     "errorOccurred": "An error occurred",
     "socialRegisterFailed": "sign up failed with"
   },
@@ -809,6 +811,10 @@
   "changePassword": {
     "title": "Change Password",
     "description": "Change your password regularly for security.",
+    "setPasswordTitle": "Set Password",
+    "setPasswordDescription": "You signed in with Google/Apple. You can set a password here to also sign in with email later.",
+    "setPasswordButton": "Save Password",
+    "submitButton": "Change Password",
     "currentPasswordRequired": "Enter your current password",
     "newPasswordRequired": "Enter your new password",
     "passwordMinLength": "Password must be at least 6 characters",

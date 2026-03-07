@@ -257,6 +257,14 @@ export default function RegisterScreen({
       const result = await authService.signUp(email.trim(), password, username.trim());
       setLoading(false);
       if (result.success) {
+        if ((result as { requiresEmailConfirmation?: boolean }).requiresEmailConfirmation) {
+          Alert.alert(
+            t('register.emailConfirmTitle') || 'E-postanızı doğrulayın',
+            t('register.emailConfirmMessage') || 'Kayıt başarılı. E-postanıza gelen doğrulama linkine tıklayın, ardından giriş yapabilirsiniz. Spam klasörünü de kontrol edin.',
+            [{ text: 'Tamam', onPress: () => onBack?.() }]
+          );
+          return;
+        }
         Alert.alert(`✅ ${t('register.welcomeTitle')}`, t('register.welcomeMessage'), [
           { text: 'Tamam', onPress: () => onRegisterSuccess() },
         ]);

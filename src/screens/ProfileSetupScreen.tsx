@@ -29,6 +29,7 @@ import {
   WEBSITE_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
 import { teamsApi } from '../services/api';
+import { getTeamById } from '../data/staticTeamsData';
 import { filterAndSortStringList } from '../utils/teamFilterUtils';
 import { STORAGE_KEYS } from '../config/constants';
 import { logger } from '../utils/logger';
@@ -454,20 +455,23 @@ export default function ProfileSetupScreen({
   const translateX = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
   
-  // Check user plan
+  // Check user plan + e-posta ile kayıtta kullanıcı adını doldur (ilk kayıt: kullanıcı adı → favori takım)
   useEffect(() => {
-    const checkUserPlan = async () => {
+    const checkUserPlanAndNickname = async () => {
       try {
         const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         if (userData) {
           const user = JSON.parse(userData);
           setIsPro(user.isPro || user.is_pro || user.plan === 'pro');
+          if (user.username && typeof user.username === 'string' && user.username.trim().length >= 3) {
+            setNickname(user.username.trim());
+          }
         }
       } catch (error) {
         console.error('Error checking user plan:', error);
       }
     };
-    checkUserPlan();
+    checkUserPlanAndNickname();
   }, []);
   
   // Animate step transition
@@ -1032,8 +1036,9 @@ export default function ProfileSetupScreen({
     if (!showTeamModal || !teamModalType) return null;
     
     return (
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+      <Modal visible transparent animationType="fade" onRequestClose={() => setShowTeamModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
               {teamModalType === 'national' ? 'Milli Takım Ara' : 'Kulüp Takımı Ara'}
@@ -1068,26 +1073,31 @@ export default function ProfileSetupScreen({
             </View>
           )}
           
-          <View style={styles.teamList}>
-            {apiTeams.map((team) => (
-              <TouchableOpacity
-                key={team.id}
-                style={styles.teamListItem}
-                onPress={() => handleTeamSelect(team, teamModalType)}
-              >
-                <View style={[styles.teamColorBar, { backgroundColor: team.colors[0] || '#1FA2A6' }]} />
-                <View style={styles.teamCardContent}>
-                  <Text style={styles.teamName}>{team.name}</Text>
-                  {team.coach && <Text style={styles.teamCoach}>{team.coach}</Text>}
-                  <Text style={styles.teamLeague}>
-                    {teamModalType === 'national' ? team.country : team.league}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+          <ScrollView style={styles.teamList} keyboardShouldPersistTaps="always">
+            {apiTeams.map((team) => {
+              const teamColor = team.colors?.[0] || getTeamById(team.id)?.colors?.[0] || '#1FA2A6';
+              return (
+                <TouchableOpacity
+                  key={team.id}
+                  style={styles.teamListItem}
+                  onPress={() => handleTeamSelect(team, teamModalType)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.teamColorBar, { backgroundColor: teamColor }]} />
+                  <View style={styles.teamCardContent}>
+                    <Text style={styles.teamName}>{team.name}</Text>
+                    {team.coach && <Text style={styles.teamCoach}>{team.coach}</Text>}
+                    <Text style={styles.teamLeague}>
+                      {teamModalType === 'national' ? team.country : [team.league, team.country].filter(Boolean).join(' • ') || team.league || team.country}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
           </View>
         </View>
-      </View>
+      </Modal>
     );
   };
   
@@ -1509,11 +1519,14 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '90%',
-    maxWidth: 400, // ✅ STANDART popup genişliği
+    maxWidth: 380,
     maxHeight: '80%',
+    alignSelf: 'center',
     backgroundColor: WEBSITE_DARK_COLORS.background,
     borderRadius: WEBSITE_BORDER_RADIUS.lg,
     padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.25)',
   },
   modalHeader: {
     flexDirection: 'row',

@@ -26,11 +26,14 @@ import { useTranslation } from '../../hooks/useTranslation';
 interface ChangePasswordModalProps {
   visible: boolean;
   onClose: () => void;
+  /** Google/Apple ile giriş yapan kullanıcılar için: mevcut şifre yok, sadece "şifre belirle" (yeni + tekrar) */
+  isOAuth?: boolean;
 }
 
 export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   visible,
   onClose,
+  isOAuth = false,
 }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
@@ -45,7 +48,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   const [loading, setLoading] = useState(false);
 
   const validateForm = (): boolean => {
-    if (!oldPassword) {
+    if (!isOAuth && !oldPassword) {
       Alert.alert(t('common.error'), t('changePassword.currentPasswordRequired'));
       return false;
     }
@@ -60,7 +63,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       return false;
     }
 
-    if (newPassword === oldPassword) {
+    if (!isOAuth && newPassword === oldPassword) {
       Alert.alert(t('common.error'), t('changePassword.samePassword'));
       return false;
     }
@@ -140,13 +143,16 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               <View style={styles.headerIcon}>
                 <Ionicons name="lock-closed" size={24} color={theme.primary} />
               </View>
-            <Text style={styles.title}>{t('changePassword.title')}</Text>
+            <Text style={styles.title}>
+              {isOAuth ? t('changePassword.setPasswordTitle') : t('changePassword.title')}
+            </Text>
             <Text style={styles.description}>
-              {t('changePassword.description')}
+              {isOAuth ? t('changePassword.setPasswordDescription') : t('changePassword.description')}
             </Text>
             </View>
 
-            {/* Mevcut Şifre */}
+            {/* Mevcut Şifre - sadece e-posta/şifre ile giriş yapanlar için */}
+            {!isOAuth && (
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Mevcut Şifre</Text>
               <View style={styles.inputContainer}>
@@ -171,6 +177,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 </TouchableOpacity>
               </View>
             </View>
+            )}
 
             {/* Yeni Şifre */}
             <View style={styles.inputGroup}>
@@ -269,7 +276,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                   {loading ? (
                     <ActivityIndicator size="small" color={theme.primaryForeground} />
                   ) : (
-                    <Text style={styles.submitButtonText}>Şifreyi Değiştir</Text>
+                    <Text style={styles.submitButtonText}>
+                      {isOAuth ? t('changePassword.setPasswordButton') : t('changePassword.submitButton')}
+                    </Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>

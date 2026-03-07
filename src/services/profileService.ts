@@ -303,6 +303,37 @@ class ProfileService {
   }
 
   /**
+   * Nickname müsait mi? (anlık uygunluk / yeşil tik için)
+   * currentUserId verilirse kendi nickname'i "müsait" sayılır
+   */
+  async checkNicknameAvailability(
+    nickname: string,
+    currentUserId?: string
+  ): Promise<{ available: boolean; error?: string }> {
+    try {
+      const trimmed = (nickname || '').trim();
+      if (trimmed.length < 3) {
+        return { available: false, error: 'En az 3 karakter gerekli' };
+      }
+      const regex = /^[a-zA-Z0-9_]+$/;
+      if (!regex.test(trimmed)) {
+        return { available: false, error: 'Sadece harf, rakam ve alt çizgi' };
+      }
+      const { data, error } = await supabase.rpc('check_nickname_available', {
+        p_nickname: trimmed,
+        p_user_id: currentUserId || null,
+      });
+      if (error) {
+        console.warn('[ProfileService] check_nickname_available error:', error.message);
+        return { available: false, error: error.message };
+      }
+      return { available: data === true };
+    } catch (e: any) {
+      return { available: false, error: e?.message || 'Kontrol yapılamadı' };
+    }
+  }
+
+  /**
    * Nickname güncelle (benzersizlik kontrolü ile)
    */
   async updateNickname(nickname: string): Promise<{ success: boolean; error?: string }> {

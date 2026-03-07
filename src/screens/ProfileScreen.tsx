@@ -20,7 +20,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { changeLanguage as changeI18nLanguage } from '../i18n';
 import { setUserTimezone } from '../utils/timezoneUtils';
-import { getFallbackClubTeamsForProfile } from '../data/staticTeamsData';
+import { getFallbackClubTeamsForProfile, getTeamById } from '../data/staticTeamsData';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,7 +35,7 @@ import { ALL_BADGES } from '../constants/badges';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import { logger } from '../utils/logger';
 import { profileService } from '../services/profileService';
-import { setFavoriteTeams as saveFavoriteTeamsToStorage, clearAllStorage } from '../utils/storageUtils';
+import { setFavoriteTeams as saveFavoriteTeamsToStorage } from '../utils/storageUtils';
 import { calculateTopPercent } from '../types/profile.types';
 import { teamsApi } from '../services/api';
 import { SPACING, TYPOGRAPHY, BRAND, COLORS, SIZES, SHADOWS } from '../theme/theme';
@@ -183,8 +183,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [autoSaveMessage, setAutoSaveMessage] = useState<string | null>(null);
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [nicknameChecking, setNicknameChecking] = useState(false);
+  const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const autoSaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const nicknameCheckTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const profileIdRef = React.useRef<string | null>(null);
   
   // 📝 PROFILE EDITING STATE
   const [firstName, setFirstName] = useState('');
@@ -427,7 +429,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const theme = useMemo(() => isDarkMode ? COLORS.dark : COLORS.light, [isDarkMode]);
   
   // 📊 USER STATS STATE
-  const [user, setUser] = useState({
+  const [user, setUser] = useState<{
+    name: string;
+    username: string;
+    email: string;
+    avatar: string;
+    level: number;
+    points: number;
+    countryRank: number;
+    globalRank: number;
+    totalPlayers: number;
+    country: string;
+    avgMatchRating: number;
+    xpGainThisWeek: number;
+    stats: { success: number; total: number; streak: number };
+    provider?: string;
+  }>({
     name: 'Kullanıcı',
     username: '@kullanici',
     email: 'user@example.com',
@@ -445,6 +462,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       total: 0,
       streak: 0,
     },
+    provider: 'email',
   });
 
   // 🎯 BEST CLUSTER STATE
@@ -607,9 +625,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         // ProfileService artık OAuth verilerini de normalize ediyor
         const unifiedProfile = await profileService.getProfile();
         
-        if (unifiedProfile) {
-          logger.info('Unified profile loaded', { 
-            id: unifiedProfile.id, 
+if (unifiedProfile) {
+          profileIdRef.current = unifiedProfile.id;
+          logger.info('Unified profile loaded', {
+            id: unifiedProfile.id,
             plan: unifiedProfile.plan,
             firstName: unifiedProfile.firstName,
             lastName: unifiedProfile.lastName,
@@ -641,6 +660,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               total: unifiedProfile.totalPredictions || 0,
               streak: unifiedProfile.currentStreak || 0,
             },
+            provider: (unifiedProfile as any).provider || 'email',
           });
           
           // Pro durumu - birden fazla alan kontrol et + isSuperAdmin
@@ -1153,33 +1173,52 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   }, [firstName, lastName, nickname, saving]);
 
-  // ✅ NICKNAME DEĞİŞİKLİĞİNDE OTOMATİK KAYDET (debounce ile)
+  // ✅ NICKNAME DEĞİŞİKLİĞİ: uygunluk kontrolü (yeşil tik) + debounce ile otomatik kaydet
   const handleNicknameChange = useCallback((text: string) => {
-    // Sadece alfanumerik karakterler ve alt çizgi izin ver
     const sanitized = text.replace(/[^a-zA-Z0-9_]/g, '');
     setNickname(sanitized);
     setIsEditing(true);
     setNicknameError(null);
-    
-    // Nickname validation
-    if (sanitized.length < 3) {
+    setNicknameStatus('idle');
+
+    if (sanitized.length > 0 && sanitized.length < 3) {
       setNicknameError('En az 3 karakter gerekli');
       return;
     }
-    
     if (sanitized.length > 20) {
       setNicknameError('En fazla 20 karakter olabilir');
       return;
     }
-    
-    // Debounce ile otomatik kaydet
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-    
-    autoSaveTimeoutRef.current = setTimeout(() => {
-      autoSaveProfile({ nickname: sanitized });
-    }, 1500); // 1.5 saniye bekle
+
+    if (nicknameCheckTimeoutRef.current) clearTimeout(nicknameCheckTimeoutRef.current);
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+
+    if (sanitized.length < 3) return;
+
+    // Anlık uygunluk kontrolü (debounce 500ms)
+    nicknameCheckTimeoutRef.current = setTimeout(async () => {
+      setNicknameChecking(true);
+      setNicknameStatus('checking');
+      const { available, error: checkError } = await profileService.checkNicknameAvailability(
+        sanitized,
+        profileIdRef.current || undefined
+      );
+      setNicknameChecking(false);
+      setNicknameStatus(available ? 'available' : 'taken');
+      if (!available && checkError) setNicknameError(checkError);
+      if (available) setNicknameError(null);
+    }, 500);
+
+    // Otomatik kaydet (1.5s debounce) – sadece müsaitse kaydet
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      const { available } = await profileService.checkNicknameAvailability(
+        sanitized,
+        profileIdRef.current || undefined
+      );
+      if (available) {
+        autoSaveProfile({ nickname: sanitized });
+      }
+    }, 1500);
   }, [autoSaveProfile]);
 
   // ✅ İSİM DEĞİŞİKLİĞİNDE OTOMATİK KAYDET
@@ -1238,12 +1277,30 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       // Sadece bir kez çalış
       nicknameSetOnceRef.current = true;
       
-      // OAuth kullanıcıları için nickname email prefix
+      // OAuth kullanıcıları: önce email prefix dene; alınmışsa (örn. user1@gmail vs user1@hotmail) alternatif ver
       if (provider !== 'email' && provider !== 'unknown') {
         if (userData?.email) {
-          const emailPrefix = userData.email.split('@')[0];
-          setNickname(emailPrefix);
-          console.log('👤 [Profile] OAuth nickname set from email (once):', emailPrefix);
+          const emailPrefix = (userData.email.split('@')[0] || '').replace(/[^a-zA-Z0-9_]/g, '');
+          const prefixOk = emailPrefix.length >= 3;
+          if (prefixOk) {
+            const { available } = await profileService.checkNicknameAvailability(
+              emailPrefix,
+              profileIdRef.current || undefined
+            );
+            if (available) {
+              setNickname(emailPrefix);
+              console.log('👤 [Profile] OAuth nickname set from email (once):', emailPrefix);
+            } else {
+              const fallback = generateAutoNickname();
+              setNickname(fallback);
+              autoSaveProfile({ nickname: fallback });
+              console.log('👤 [Profile] OAuth prefix taken, fallback:', fallback);
+            }
+          } else {
+            const fallback = generateAutoNickname();
+            setNickname(fallback);
+            autoSaveProfile({ nickname: fallback });
+          }
         }
         return;
       }
@@ -1518,14 +1575,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </Animated.View>
 
           {/* Favori Takımlar Card - Web ile uyumlu */}
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200)} style={[styles.card, styles.cardFavoriteTeams]}>
             <View style={styles.cardHeader}>
               <Ionicons name="heart" size={20} color={theme.accent} />
-              <Text style={styles.cardTitle}>Favori Takımlar</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>Favori Takımlar</Text>
+                <Text style={[styles.cardSubtitle, { color: theme.mutedForeground }]}>Milli takım ve en fazla 5 kulüp takımı seçin</Text>
+              </View>
             </View>
 
-            {/* Milli Takım Seçimi - Tek dropdown, web ile aynı */}
-            <View style={styles.formField}>
+            {/* Milli Takım Seçimi */}
+            <View style={[styles.formField, { marginTop: 4 }]}>
               <Text style={styles.formLabel}>Milli Takım <Text style={styles.requiredStar}>*</Text></Text>
               <TouchableOpacity
                 style={[
@@ -1601,38 +1661,40 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         keyboardShouldPersistTaps="always"
                         nestedScrollEnabled={true}
                       >
-                        {apiTeams.map((team, idx) => (
-                          <TouchableOpacity
-                            key={`${team.id}-${team.name}-${idx}`}
-                            style={styles.dropdownItem}
-                            activeOpacity={0.7}
-                            onPress={() => {
-                              console.log('🔵 National team clicked:', team.name);
-                              const teamToAdd = {
-                                id: team.id,
-                                name: team.name,
-                                colors: team.colors || ['#1E40AF', '#FFFFFF'],
-                                country: team.country || 'Unknown',
-                                league: team.league || '',
-                                flag: (team as any).flag || getCountryFlagUrl(team.country),
-                              };
-                              handleTeamSelect(teamToAdd, 'national');
-                              console.log('✅ National team selected:', teamToAdd.name);
-                            }}
-                          >
-                            <View style={styles.dropdownItemLeft}>
-                              {((team as any).flag || getCountryFlagUrl(team.country)) ? (
-                                <Image source={{ uri: (team as any).flag || getCountryFlagUrl(team.country)! }} style={styles.teamFlagImage} resizeMode="cover" />
-                              ) : (
-                                <Ionicons name="flag" size={20} color={theme.mutedForeground} />
-                              )}
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.dropdownItemName}>{team.name}</Text>
-                                <Text style={styles.dropdownItemMeta}>{translateCountry(team.country)}</Text>
+                        {apiTeams.map((team, idx) => {
+                          const teamColor = (team as any).colors?.[0] || getTeamById(team.id)?.colors?.[0] || theme.primary;
+                          return (
+                            <TouchableOpacity
+                              key={`${team.id}-${team.name}-${idx}`}
+                              style={styles.dropdownItem}
+                              activeOpacity={0.7}
+                              onPress={() => {
+                                const teamToAdd = {
+                                  id: team.id,
+                                  name: team.name,
+                                  colors: (team as any).colors || ['#1E40AF', '#FFFFFF'],
+                                  country: team.country || 'Unknown',
+                                  league: team.league || '',
+                                  flag: (team as any).flag || getCountryFlagUrl(team.country),
+                                };
+                                handleTeamSelect(teamToAdd, 'national');
+                              }}
+                            >
+                              <View style={[styles.dropdownItemColorStrip, { backgroundColor: teamColor }]} />
+                              <View style={styles.dropdownItemContent}>
+                                {(team as any).flag || getCountryFlagUrl(team.country) ? (
+                                  <Image source={{ uri: (team as any).flag || getCountryFlagUrl(team.country)! }} style={styles.teamFlagImage} resizeMode="cover" />
+                                ) : (
+                                  <Ionicons name="flag" size={20} color={theme.mutedForeground} />
+                                )}
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.dropdownItemName}>{team.name}</Text>
+                                  <Text style={styles.dropdownItemMeta}>{translateCountry(team.country)}</Text>
+                                </View>
                               </View>
-                            </View>
-                          </TouchableOpacity>
-                        ))}
+                            </TouchableOpacity>
+                          );
+                        })}
                       </ScrollView>
                     </View>
                   </View>
@@ -1640,9 +1702,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               )}
             </View>
 
-            {/* Kulüp Takımları Seçimi - Pro için tek dropdown */}
+            {/* Kulüp Takımları Seçimi */}
             {isPro && (
-              <View style={styles.formField}>
+              <View style={[styles.formField, { marginTop: SPACING.md }]}>
                 <Text style={styles.formLabel}>
                   {t('teamSelection.clubTeamsLabel')} <Text style={styles.formHint}>{t('teamSelection.maxFiveHint')}</Text>
                 </Text>
@@ -1685,16 +1747,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <View style={styles.selectedTeamsBadges}>
                     {selectedClubTeams.map((team, idx) => {
                       if (!team) return null;
+                      const teamColor = (team as any).colors?.[0] || getTeamById(team.id)?.colors?.[0] || theme.primary;
                       return (
                         <TouchableOpacity
-                          key={team.id || idx} 
-                          style={styles.teamBadge}
+                          key={team.id || idx}
+                          style={[
+                            styles.teamBadge,
+                            {
+                              backgroundColor: teamColor + '22',
+                              borderColor: teamColor + '66',
+                            },
+                          ]}
                           onPress={() => handleRemoveClubTeam(idx)}
                           activeOpacity={0.7}
                         >
-                          <Ionicons name="football" size={14} color={theme.accent} />
+                          <Ionicons name="football" size={14} color={teamColor} />
                           <Text style={styles.teamBadgeText}>{team.name}</Text>
-                          <View style={styles.teamBadgeRemove}>
+                          <View style={[styles.teamBadgeRemove, { backgroundColor: teamColor }]}>
                             <Ionicons name="close" size={12} color="#FFFFFF" />
                           </View>
                         </TouchableOpacity>
@@ -1757,43 +1826,41 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           keyboardShouldPersistTaps="always"
                           nestedScrollEnabled={true}
                         >
-                          {apiTeams.filter(t => !selectedClubTeams.some(ct => ct && ct.id === t.id)).map((team, idx) => (
-                            <TouchableOpacity
-                              key={`${team.id}-${team.name}-${idx}`}
-                              style={styles.dropdownItem}
-                              activeOpacity={0.7}
-                              onPress={() => {
-                                console.log('🔵 Team clicked:', team.name);
-                                // Boş slot bul
-                                const emptyIndex = selectedClubTeams.findIndex(t => t === null);
-                                console.log('🔵 Empty slot index:', emptyIndex);
-                                
-                                if (emptyIndex === -1) {
-                                  console.log('⚠️ No empty slot - all 5 filled');
-                                  Alert.alert(t('profile.warning'), t('profile.maxFiveClubs'));
-                                  return;
-                                }
-                                
-                                const teamToAdd = {
-                                  id: team.id,
-                                  name: team.name,
-                                  colors: team.colors || ['#1E40AF', '#FFFFFF'],
-                                  country: team.country || 'Unknown',
-                                  league: team.league || '',
-                                };
-                                
-                                // handleTeamSelect zaten state'i güncelliyor
-                                handleTeamSelect(teamToAdd, 'club', emptyIndex);
-                                console.log('✅ Team added:', teamToAdd.name, 'at index:', emptyIndex);
-                              }}
-                              disabled={selectedClubTeams.filter(Boolean).length >= 5}
-                            >
-                              <View style={{ flex: 1 }}>
-                              <Text style={styles.dropdownItemName}>{team.name}</Text>
-                                <Text style={styles.dropdownItemMeta}>{team.league ? `${team.league} • ${translateCountry(team.country)}` : translateCountry(team.country)}</Text>
-                              </View>
-                            </TouchableOpacity>
-                          ))}
+                          {apiTeams.filter(t => !selectedClubTeams.some(ct => ct && ct.id === t.id)).map((team, idx) => {
+                            const teamColor = (team as any).colors?.[0] || getTeamById(team.id)?.colors?.[0] || theme.primary;
+                            return (
+                              <TouchableOpacity
+                                key={`${team.id}-${team.name}-${idx}`}
+                                style={styles.dropdownItem}
+                                activeOpacity={0.7}
+                                onPress={() => {
+                                  const emptyIndex = selectedClubTeams.findIndex(t => t === null);
+                                  if (emptyIndex === -1) {
+                                    Alert.alert(t('profile.warning'), t('profile.maxFiveClubs'));
+                                    return;
+                                  }
+                                  const teamToAdd = {
+                                    id: team.id,
+                                    name: team.name,
+                                    colors: (team as any).colors || ['#1E40AF', '#FFFFFF'],
+                                    country: team.country || 'Unknown',
+                                    league: team.league || '',
+                                  };
+                                  handleTeamSelect(teamToAdd, 'club', emptyIndex);
+                                }}
+                                disabled={selectedClubTeams.filter(Boolean).length >= 5}
+                              >
+                                <View style={[styles.dropdownItemColorStrip, { backgroundColor: teamColor }]} />
+                                <View style={styles.dropdownItemContent}>
+                                  <Ionicons name="football" size={20} color={teamColor} />
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.dropdownItemName}>{team.name}</Text>
+                                    <Text style={styles.dropdownItemMeta}>{team.league ? `${team.league} • ${translateCountry(team.country)}` : translateCountry(team.country)}</Text>
+                                  </View>
+                                </View>
+                              </TouchableOpacity>
+                            );
+                          })}
                         </ScrollView>
                       </View>
                     </View>
@@ -1822,26 +1889,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </Animated.View>
 
           {/* Kişisel Bilgiler Card */}
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(250)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(250)} style={[styles.card, styles.cardPersonalInfo]}>
             <View style={styles.cardHeader}>
               <Ionicons name="person-outline" size={20} color={theme.primary} />
               <Text style={styles.cardTitle}>Kişisel Bilgiler</Text>
-              {/* ✅ Otomatik Kaydetme Mesajı */}
-              {autoSaveMessage && (
-                <View style={{
-                  marginLeft: 'auto',
-                  backgroundColor: autoSaveMessage.includes('✓') ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 12,
-                }}>
-                  <Text style={{
-                    color: autoSaveMessage.includes('✓') ? '#22C55E' : '#EF4444',
-                    fontSize: 12,
-                    fontWeight: '600',
-                  }}>{autoSaveMessage}</Text>
-                </View>
-              )}
               {saving && (
                 <ActivityIndicator size="small" color={theme.primary} style={{ marginLeft: 8 }} />
               )}
@@ -1872,11 +1923,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <View style={styles.formField}>
               <Text style={styles.formLabel}>{t('profileEdit.nickname')} <Text style={styles.requiredStar}>*</Text></Text>
               <View style={{ position: 'relative' }}>
-              <TextInput
+<TextInput
                   style={[
-                    styles.formInput, 
+                    styles.formInput,
                     styles.formInputEditable,
-                    nicknameError && { borderColor: '#EF4444', borderWidth: 1 }
+                    nicknameError && { borderColor: '#EF4444', borderWidth: 1 },
+                    nicknameStatus === 'available' && { borderColor: '#22C55E', borderWidth: 1 }
                   ]}
                 value={nickname}
                   onChangeText={handleNicknameChange}
@@ -1887,15 +1939,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   autoCorrect={false}
                 />
                 {nicknameChecking && (
-                  <ActivityIndicator 
-                    size="small" 
-                    color={theme.primary} 
-                    style={{ position: 'absolute', right: 12, top: 12 }} 
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.primary}
+                    style={{ position: 'absolute', right: 12, top: 12 }}
                   />
+                )}
+                {!nicknameChecking && nicknameStatus === 'available' && (
+                  <Text style={{ position: 'absolute', right: 12, top: 12, fontSize: 18 }}>✅</Text>
+                )}
+                {!nicknameChecking && nicknameStatus === 'taken' && (
+                  <Text style={{ position: 'absolute', right: 12, top: 12, fontSize: 18 }}>❌</Text>
                 )}
             </View>
               {nicknameError ? (
                 <Text style={[styles.formHint, { color: '#EF4444' }]}>{nicknameError}</Text>
+              ) : nicknameStatus === 'available' ? (
+                <Text style={[styles.formHint, { color: '#22C55E' }]>Kullanıcı adı uygun. Otomatik kaydedilir.</Text>
               ) : (
                 <Text style={styles.formHint}>Sadece harf, rakam ve alt çizgi. Otomatik kaydedilir.</Text>
               )}
@@ -2422,44 +2482,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
             </TouchableOpacity>
 
-            {/* Yerel önbelleği temizle - port/cihaz değişince eski veriyi silmek için */}
-            <TouchableOpacity 
-              style={styles.securityButton}
-              onPress={async () => {
-                Alert.alert(
-                  t('profile.clearCache'),
-                  t('profile.clearCacheConfirm'),
-                  [
-                    { text: t('common.cancel'), style: 'cancel' },
-                    {
-                      text: t('common.ok'),
-                      onPress: async () => {
-                        try {
-                          if (Platform.OS === 'web' && typeof window?.localStorage !== 'undefined') {
-                            window.localStorage.clear();
-                            window.sessionStorage?.clear?.();
-                          }
-                          await clearAllStorage();
-                          Alert.alert(t('common.success'), t('profile.clearCacheDone'));
-                          if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                            window.location.reload();
-                          } else {
-                            onBack();
-                          }
-                        } catch (e: any) {
-                          Alert.alert(t('common.error'), e?.message || t('common.errorOccurred'));
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
-            >
-              <Ionicons name="trash-bin-outline" size={20} color={theme.primary} />
-              <Text style={styles.securityButtonText}>{t('profile.clearCache')}</Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
-            </TouchableOpacity>
-
             {/* Çıkış Yap - Web ve Mobile: Özel modal (açık/koyu mod uyumlu) */}
             <TouchableOpacity 
               style={[styles.securityButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
@@ -2534,10 +2556,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </Pressable>
           </Modal>
 
-          {/* Şifre Değiştir Modal */}
+          {/* Şifre Değiştir Modal - OAuth (Google/Apple) kullanıcılarında mevcut şifre istenmez, sadece "şifre belirle" */}
           <ChangePasswordModal
             visible={showChangePasswordModal}
             onClose={() => setShowChangePasswordModal(false)}
+            isOAuth={user.provider === 'google' || user.provider === 'apple'}
           />
 
           {/* Yasal Bilgilendirmeler Modal */}
@@ -2863,21 +2886,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       </View>
 
-      {/* ✅ Kaydedildi mesajı - toast notification */}
+      {/* ✅ Kaydedildi mesajı - tek, şık toast (üst orta) */}
       {autoSaveMessage && (
         <Animated.View 
           entering={Platform.OS === 'web' ? FadeIn : FadeIn.duration(200)}
           exiting={Platform.OS === 'web' ? FadeOut : FadeOut.duration(200)}
-          style={styles.savedToast}
+          style={[
+            styles.savedToast,
+            autoSaveMessage.includes('✗') && styles.savedToastError,
+          ]}
         >
           <Ionicons 
             name={autoSaveMessage.includes('✗') ? 'close-circle' : 'checkmark-circle'} 
-            size={18} 
-            color={autoSaveMessage.includes('✗') ? '#EF4444' : '#10B981'} 
+            size={20} 
+            color={autoSaveMessage.includes('✗') ? '#FEE2E2' : '#ECFDF5'} 
           />
           <Text style={[
-            styles.savedToastText, 
-            autoSaveMessage.includes('✗') && { color: '#EF4444' }
+            styles.savedToastText,
+            autoSaveMessage.includes('✗') && styles.savedToastTextError,
           ]}>{autoSaveMessage}</Text>
         </Animated.View>
       )}
@@ -3370,19 +3396,22 @@ const createStyles = (isDark: boolean = true) => {
   card: {
     backgroundColor: isDark ? theme.card : 'rgba(242,245,244,0.98)',
     borderWidth: isDark ? 1 : 1.5,
-    borderColor: isDark ? theme.border : 'rgba(15, 42, 36, 0.18)',
+    borderColor: isDark ? theme.border : 'rgba(15, 42, 36, 0.2)',
+    borderLeftWidth: 4,
+    borderLeftColor: theme.primary + '99',
     borderRadius: SIZES.radiusLg,
     padding: SPACING.lg,
     marginBottom: SPACING.base,
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: isDark ? '#000' : 'rgba(15,42,36,0.12)',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: isDark ? 0.05 : 0.08,
-        shadowRadius: 2,
+        shadowColor: isDark ? '#000' : theme.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: isDark ? 0.06 : 0.1,
+        shadowRadius: 6,
       },
-      android: { elevation: isDark ? 1 : 2 },
-      web: { boxShadow: isDark ? '0 1px 2px rgba(0,0,0,0.05)' : '0 1px 3px rgba(15,42,36,0.08)' },
+      android: { elevation: isDark ? 2 : 3 },
+      web: { boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.08)' : '0 2px 12px rgba(15,42,36,0.12)' },
     }),
   },
   cardHeader: {
@@ -3404,8 +3433,21 @@ const createStyles = (isDark: boolean = true) => {
   cardTitle: {
     ...TYPOGRAPHY.h4,
     fontWeight: TYPOGRAPHY.semibold,
-    color: theme.foreground, // Web ile aynı
-    fontSize: 16, // Web'deki base size
+    color: theme.foreground,
+    fontSize: 16,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: '400',
+  },
+  cardFavoriteTeams: {
+    borderLeftColor: (theme.accent || '#F59E0B') + 'CC',
+    backgroundColor: isDark ? theme.card : 'rgba(245, 158, 11, 0.05)',
+  },
+  cardPersonalInfo: {
+    borderLeftColor: '#6366F1' + 'AA',
+    backgroundColor: isDark ? theme.card : 'rgba(99, 102, 241, 0.04)',
   },
 
   // Performance
@@ -3995,37 +4037,45 @@ const createStyles = (isDark: boolean = true) => {
     fontWeight: '500',
   },
   
-  // ✅ Saved Toast
+  // ✅ Saved Toast - tek, üst ortada pill
   savedToast: {
     position: 'absolute',
-    bottom: 100,
-    alignSelf: 'center',
+    top: 56,
+    left: 20,
+    right: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderRadius: 24,
+    backgroundColor: '#059669',
+    borderRadius: 999,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.4)',
     zIndex: 999,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
         shadowRadius: 8,
       },
       android: { elevation: 8 },
-      web: { boxShadow: '0 4px 8px rgba(0,0,0,0.3)' },
+      web: { boxShadow: '0 4px 12px rgba(5, 150, 105, 0.4)' },
+    }),
+  } as ViewStyle,
+  savedToastError: {
+    backgroundColor: '#DC2626',
+    ...Platform.select({
+      web: { boxShadow: '0 4px 12px rgba(220, 38, 38, 0.35)' },
     }),
   } as ViewStyle,
   savedToastText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#10B981',
-    marginLeft: 8,
+    color: '#ECFDF5',
+    marginLeft: 10,
+  },
+  savedToastTextError: {
+    color: '#FEE2E2',
   },
   
   // ✅ Rozetlerim Section - Diğer kartlarla aynı genişlik, ortalı (%75 azaltılmış boşluk)
@@ -5112,17 +5162,17 @@ const createStyles = (isDark: boolean = true) => {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 48,
+    minHeight: 48,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderWidth: 1.5,
-    borderColor: theme.border,
-    borderRadius: SIZES.radiusMd,
+    borderColor: theme.border + '80',
+    borderRadius: 10,
     backgroundColor: theme.card,
   },
   dropdownButtonSelected: {
-    borderColor: theme.secondary,
-    backgroundColor: theme.secondary + '0D',
+    borderColor: theme.primary + '99',
+    backgroundColor: theme.primary + '0F',
   },
   dropdownSelectedContent: {
     flexDirection: 'row',
@@ -5157,8 +5207,11 @@ const createStyles = (isDark: boolean = true) => {
   // Dropdown Modal
   dropdownModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end',
+    ...Platform.select({
+      web: { alignItems: 'center' },
+    }),
   },
   dropdownModalContent: {
     backgroundColor: theme.card,
@@ -5180,7 +5233,10 @@ const createStyles = (isDark: boolean = true) => {
         elevation: 12,
       },
       web: {
-        boxShadow: `0 -4px 24px ${theme.secondary}20`,
+        boxShadow: `0 -4px 24px ${theme.secondary}25`,
+        width: '90%',
+        maxWidth: 400,
+        alignSelf: 'center',
       },
     }),
   },
@@ -5191,11 +5247,12 @@ const createStyles = (isDark: boolean = true) => {
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.base,
     borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-    backgroundColor: theme.secondary + '0A',
+    borderBottomColor: theme.border + '60',
+    backgroundColor: theme.primary + '12',
   },
   dropdownModalTitle: {
     ...TYPOGRAPHY.h3,
+    fontSize: 17,
     color: theme.foreground,
     fontWeight: TYPOGRAPHY.bold,
   },
@@ -5218,13 +5275,25 @@ const createStyles = (isDark: boolean = true) => {
     maxHeight: 400,
   },
   dropdownItem: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     borderBottomWidth: 1,
-    borderBottomColor: theme.border,
+    borderBottomColor: theme.border + '50',
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    minHeight: 56,
+  },
+  dropdownItemColorStrip: {
+    width: 4,
+    borderRadius: 0,
+  },
+  dropdownItemContent: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    gap: 12,
   },
   dropdownItemName: {
     ...TYPOGRAPHY.body,

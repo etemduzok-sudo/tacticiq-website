@@ -88,14 +88,20 @@ class AuthService {
         throw new Error(emailCheck.message || 'Bu e-posta adresi zaten kayıtlı');
       }
 
-      // 3. Create auth user
+      // 3. Create auth user (Supabase Confirm email açıksa session null döner)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          // E-posta doğrulama linki tıklanınca yönlendirilecek URL (deep link / web)
+          emailRedirectTo: undefined, // İsterseniz: 'https://yourapp.com/auth/callback'
+        },
       });
 
       if (authError) throw authError;
       if (!authData.user) throw new Error('User creation failed');
+
+      const requiresEmailConfirmation = !authData.session;
 
       // 4. Create user profile in public.users table
       const { error: profileError } = await supabase
@@ -114,15 +120,21 @@ class AuthService {
 
       if (profileError) throw profileError;
 
-      // 5. Save to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({
-        id: authData.user.id,
-        email,
-        username,
-        authenticated: true,
-      }));
+      // 5. Save to AsyncStorage (doğrulama gerekmiyorsa veya sonra oturum açınca dolar)
+      if (!requiresEmailConfirmation) {
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({
+          id: authData.user.id,
+          email,
+          username,
+          authenticated: true,
+        }));
+      }
 
-      return { success: true, user: authData.user };
+      return {
+        success: true,
+        user: authData.user,
+        requiresEmailConfirmation: !!requiresEmailConfirmation,
+      };
     } catch (error: any) {
       console.error('Sign up error:', error);
       return { success: false, error: error.message };

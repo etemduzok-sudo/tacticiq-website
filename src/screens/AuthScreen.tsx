@@ -162,7 +162,16 @@ export default function AuthScreen({
       Alert.alert(t('common.done'), `✅ ${t('auth.loginSuccess')}`);
       onLoginSuccess();
     } else {
-      Alert.alert(t('common.error'), `❌ ${result.error || t('auth.loginFailed')}`);
+      const err = result.error || t('auth.loginFailed');
+      const isEmailNotConfirmed = /email not confirmed|doğrulanmamış|confirm your email/i.test(err);
+      if (isEmailNotConfirmed) {
+        Alert.alert(
+          t('register.emailConfirmTitle') || 'E-postanızı doğrulayın',
+          (t('register.emailConfirmMessage') || 'E-postanıza gelen doğrulama linkine tıklayın, ardından tekrar giriş yapın. Spam klasörünü kontrol edin.')
+        );
+      } else {
+        Alert.alert(t('common.error'), `❌ ${err}`);
+      }
     }
   };
 
