@@ -1,0 +1,10 @@
+=== TacticIQ DB Durumu === (07.03.2026 16:01:05)
+
+TAKIM:    2914 / 2914  (100%%)
+KADRO:    2914 / 2914  (100%%)
+KOC:      2914 / 2914  (100%%)
+RENK:     2914 / 2914  (100%%)
+RATING:   1523 / 2914  (52%%)  -- API limiti doldu, yarin devam edecek
+
+SIZINTI:  YOK
+BACKEND:  Calisiyor (port 3001)

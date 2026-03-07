@@ -2,58 +2,52 @@
 // Handles syncing API data to Supabase
 const { supabase, isConfigured } = require('../config/supabase');
 
-// Maç senkronunda gördüğümüz tüm takımları (rakipler dahil) static_teams'te yoksa ekler
-async function ensureTeamsInStaticTeams(fixtures) {
-  if (!isConfigured || !supabase || !fixtures || fixtures.length === 0) return;
-  const teamsMap = new Map();
-  for (const f of fixtures) {
-    if (f.teams?.home?.id != null && f.teams?.home?.name) {
-      teamsMap.set(Number(f.teams.home.id), { id: Number(f.teams.home.id), name: String(f.teams.home.name).trim() });
+// static_teams tablosundaki doğru isimleri cache'le (API isimleri eski olabilir)
+const _staticNameCache = new Map();
+let _staticNameCacheLoadedAt = 0;
+const STATIC_NAME_CACHE_TTL = 10 * 60 * 1000; // 10 dk
+
+async function loadStaticNameCache() {
+  if (!isConfigured || !supabase) return;
+  if (Date.now() - _staticNameCacheLoadedAt < STATIC_NAME_CACHE_TTL && _staticNameCache.size > 0) return;
+  try {
+    const PAGE = 1000;
+    let offset = 0;
+    const newMap = new Map();
+    while (true) {
+      const { data, error } = await supabase
+        .from('static_teams')
+        .select('api_football_id, name')
+        .not('name', 'is', null)
+        .range(offset, offset + PAGE - 1);
+      if (error) { console.error('[staticNameCache] load error:', error.message); break; }
+      if (!data || data.length === 0) break;
+      for (const row of data) {
+        if (row.api_football_id && row.name) newMap.set(Number(row.api_football_id), row.name);
+      }
+      if (data.length < PAGE) break;
+      offset += PAGE;
     }
-    if (f.teams?.away?.id != null && f.teams?.away?.name) {
-      teamsMap.set(Number(f.teams.away.id), { id: Number(f.teams.away.id), name: String(f.teams.away.name).trim() });
+    if (newMap.size > 0) {
+      _staticNameCache.clear();
+      for (const [k, v] of newMap) _staticNameCache.set(k, v);
+      _staticNameCacheLoadedAt = Date.now();
     }
+  } catch (e) {
+    console.error('[staticNameCache] error:', e.message);
   }
-  const teams = Array.from(teamsMap.values()).filter((t) => t.id && t.name);
-  if (teams.length === 0) return;
-  const ids = teams.map((t) => t.id);
-  const { data: existing } = await supabase
-    .from('static_teams')
-    .select('api_football_id')
-    .in('api_football_id', ids);
-  const existingIds = new Set((existing || []).map((r) => r.api_football_id));
-  const toInsert = teams.filter((t) => !existingIds.has(t.id));
-  if (toInsert.length === 0) return;
-  const rowsFull = toInsert.map((t) => ({
-    api_football_id: t.id,
-    name: t.name,
-    country: 'Unknown',
-    league_type: 'domestic_top',
-    team_type: 'club',
-    last_updated: new Date().toISOString(),
-  }));
-  const rowsMinimal = toInsert.map((t) => ({
-    api_football_id: t.id,
-    name: t.name,
-    country: 'Unknown',
-    last_updated: new Date().toISOString(),
-  }));
-  const BATCH = 50;
-  let added = 0;
-  for (let i = 0; i < toInsert.length; i += BATCH) {
-    const batch = rowsFull.slice(i, i + BATCH);
-    const { error } = await supabase.from('static_teams').upsert(batch, { onConflict: 'api_football_id' });
-    if (error) {
-      const batchMin = rowsMinimal.slice(i, i + BATCH);
-      const { error: err2 } = await supabase.from('static_teams').upsert(batchMin, { onConflict: 'api_football_id' });
-      if (!err2) added += batchMin.length;
-    } else {
-      added += batch.length;
-    }
-  }
-  if (added > 0 && !process.env.SUPPRESS_SYNC_LOGS) {
-    console.log(`  📋 static_teams: ${added} rakip takım eklendi`);
-  }
+}
+
+function resolveTeamName(teamId, apiName) {
+  const cached = _staticNameCache.get(Number(teamId));
+  return cached || apiName;
+}
+
+// DEVRE DIŞI: Takım ekleme görevi artık sadece staticTeamsScheduler tarafından yapılır.
+// staticTeamsScheduler düzgün metadata (country, league, colors) ile çalışır.
+// Bu fonksiyon eksik metadata ile (country: 'Unknown', league: null) kötü kayıtlar oluşturuyordu.
+async function ensureTeamsInStaticTeams(/* fixtures */) {
+  return;
 }
 
 class DatabaseService {
@@ -101,6 +95,9 @@ class DatabaseService {
     try {
       const team = teamData.team || teamData;
       
+      await loadStaticNameCache();
+      const displayName = resolveTeamName(team.id, team.name);
+      
       // Extract colors and flag from team data if available
       const colors = teamData.colors || team.colors || null;
       const flag = teamData.flag || team.flag || null;
@@ -109,7 +106,7 @@ class DatabaseService {
       // ⚠️ TELİF HAKKI: Kulüp armaları ve lig logo'ları ASLA kullanılmaz, sadece renkler
       const updateData = {
         id: team.id,
-        name: team.name,
+        name: displayName,
         code: team.code,
         country: team.country,
         logo: null, // ⚠️ TELİF HAKKI: Kulüp armaları ASLA kaydedilmez (sadece renkler kullanılır)
@@ -565,6 +562,54 @@ class DatabaseService {
   }
 }
 
+/**
+ * teams tablosundaki isimleri static_teams tablosundan günceller.
+ * API eski isim döndüğünde bile (ör: "Gazişehir Gaziantep") DB'de doğru isim olur.
+ * Server başlangıcında ve periyodik olarak çağrılır.
+ */
+async function syncTeamNamesFromStaticTeams() {
+  if (!isConfigured || !supabase) return 0;
+  try {
+    await loadStaticNameCache();
+    if (_staticNameCache.size === 0) return 0;
+
+    const PAGE = 500;
+    let offset = 0;
+    let updated = 0;
+    while (true) {
+      const { data: teamRows, error } = await supabase
+        .from('teams')
+        .select('id, name')
+        .range(offset, offset + PAGE - 1);
+      if (error) { console.error('[syncTeamNames] teams query error:', error.message); break; }
+      if (!teamRows || teamRows.length === 0) break;
+
+      const toUpdate = [];
+      for (const row of teamRows) {
+        const correctName = _staticNameCache.get(Number(row.id));
+        if (correctName && correctName !== row.name) {
+          toUpdate.push({ id: row.id, name: correctName });
+        }
+      }
+      if (toUpdate.length > 0) {
+        const { error: uErr } = await supabase.from('teams').upsert(toUpdate, { onConflict: 'id' });
+        if (uErr) console.error('[syncTeamNames] upsert error:', uErr.message);
+        else updated += toUpdate.length;
+      }
+      if (teamRows.length < PAGE) break;
+      offset += PAGE;
+    }
+    if (updated > 0) console.log(`✅ [syncTeamNames] ${updated} takım adı static_teams'den güncellendi`);
+    return updated;
+  } catch (e) {
+    console.error('[syncTeamNames] error:', e.message);
+    return 0;
+  }
+}
+
 const databaseService = new DatabaseService();
 module.exports = databaseService;
 module.exports.ensureTeamsInStaticTeams = ensureTeamsInStaticTeams;
+module.exports.loadStaticNameCache = loadStaticNameCache;
+module.exports.resolveTeamName = resolveTeamName;
+module.exports.syncTeamNamesFromStaticTeams = syncTeamNamesFromStaticTeams;

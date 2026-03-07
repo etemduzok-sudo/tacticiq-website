@@ -2,14 +2,13 @@ name: DB Backup - Weekly
 
 on:
   schedule:
-    # Her Pazar 02:00 UTC
     - cron: '0 2 * * 0'
   workflow_dispatch:
 
 jobs:
   backup-database:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -34,45 +33,56 @@ jobs:
         run: |
           mkdir -p backup
           DATE=$(date +%Y-%m-%d)
-          
+
           node -e "
           const { createClient } = require('@supabase/supabase-js');
           const fs = require('fs');
           const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-          
+
           const tables = [
-            'users', 'predictions', 'prediction_scores', 'match_results',
-            'user_stats', 'leaderboard_snapshots', 'player_community_ratings',
-            'squad_predictions', 'formation_statistics'
+            'users', 'user_stats', 'favorite_teams',
+            'predictions', 'prediction_items', 'prediction_scores',
+            'squad_predictions', 'formation_statistics',
+            'match_results', 'match_end_snapshots',
+            'leaderboard_snapshots', 'player_community_ratings',
+            'leagues', 'teams', 'matches',
+            'players', 'static_teams', 'team_squads',
+            'player_power_scores'
           ];
-          
+
+          async function fetchAll(table) {
+            const rows = [];
+            const PAGE = 5000;
+            let from = 0;
+            while (true) {
+              const { data, error } = await supabase
+                .from(table)
+                .select('*')
+                .range(from, from + PAGE - 1);
+              if (error) throw new Error(table + ': ' + error.message);
+              if (!data || data.length === 0) break;
+              rows.push(...data);
+              if (data.length < PAGE) break;
+              from += PAGE;
+            }
+            return rows;
+          }
+
           (async () => {
             const summary = {};
             for (const table of tables) {
               try {
-                const { data, error, count } = await supabase
-                  .from(table)
-                  .select('*', { count: 'exact' })
-                  .limit(10000);
-                
-                if (error) {
-                  console.error('Error exporting ' + table + ':', error.message);
-                  summary[table] = { error: error.message };
-                  continue;
-                }
-                
-                fs.writeFileSync('backup/' + table + '_${DATE}.json', JSON.stringify(data, null, 2));
-                summary[table] = { rows: data?.length || 0, total: count };
-                console.log('Exported ' + table + ': ' + (data?.length || 0) + ' rows');
+                const data = await fetchAll(table);
+                fs.writeFileSync('backup/' + table + '_' + '${DATE}' + '.json', JSON.stringify(data));
+                summary[table] = { rows: data.length };
+                console.log('OK ' + table + ': ' + data.length + ' rows');
               } catch (e) {
-                console.error('Failed ' + table + ':', e.message);
+                console.error('FAIL ' + table + ':', e.message);
                 summary[table] = { error: e.message };
               }
             }
-            
-            fs.writeFileSync('backup/summary_${DATE}.json', JSON.stringify(summary, null, 2));
-            console.log('');
-            console.log('Backup complete:', JSON.stringify(summary, null, 2));
+            fs.writeFileSync('backup/summary_' + '${DATE}' + '.json', JSON.stringify(summary, null, 2));
+            console.log('Backup complete');
           })();
           "
 

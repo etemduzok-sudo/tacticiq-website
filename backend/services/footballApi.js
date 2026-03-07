@@ -60,9 +60,9 @@ function checkAndResetCounter() {
 async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration = 3600) {
   checkAndResetCounter();
 
-  // Check rate limit (75000 for PRO plan)
   if (requestCount >= 75000) {
-    throw new Error('Daily API rate limit reached (75000 requests)');
+    console.warn('⚠️ Daily API rate limit reached (75000 requests)');
+    return { response: [], results: 0, errors: ['Daily API rate limit reached (75000)'] };
   }
 
   // Check cache first
@@ -91,6 +91,7 @@ async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration
         'x-rapidapi-host': 'v3.football.api-sports.io',
       },
       params,
+      timeout: 20000,
     });
 
     requestCount++;

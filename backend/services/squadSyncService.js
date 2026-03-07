@@ -594,6 +594,97 @@ function getSquadSyncStatus() {
   };
 }
 
+/**
+ * Orphaned squad kayitlarini temizle:
+ * 1. static_teams'te olmayan takimlarin kadrolarini sil
+ * 2. Ayni (team_id, season) ciftinden birden fazla kayit varsa en yenisini tut
+ */
+async function cleanupOrphanedSquads() {
+  if (!supabase) return { removed: 0, deduped: 0 };
+  let removed = 0, deduped = 0;
+  const PAGE = 1000;
+
+  try {
+    const validIds = new Set();
+    let off = 0;
+    while (true) {
+      const { data } = await supabase
+        .from('static_teams')
+        .select('api_football_id')
+        .range(off, off + PAGE - 1);
+      if (!data || data.length === 0) break;
+      data.forEach(t => validIds.add(t.api_football_id));
+      if (data.length < PAGE) break;
+      off += PAGE;
+    }
+    if (validIds.size === 0) return { removed: 0, deduped: 0 };
+
+    const allSquads = [];
+    off = 0;
+    while (true) {
+      const { data } = await supabase
+        .from('team_squads')
+        .select('team_id, season, updated_at')
+        .eq('season', CURRENT_SEASON)
+        .range(off, off + PAGE - 1);
+      if (!data || data.length === 0) break;
+      allSquads.push(...data);
+      if (data.length < PAGE) break;
+      off += PAGE;
+    }
+
+    const orphanedIds = new Set();
+    const seen = new Map();
+    const duplicateRows = [];
+
+    for (const sq of allSquads) {
+      if (!validIds.has(sq.team_id)) {
+        orphanedIds.add(sq.team_id);
+        continue;
+      }
+      const key = `${sq.team_id}_${sq.season}`;
+      const existing = seen.get(key);
+      if (existing) {
+        const keepThis = (sq.updated_at || '') > (existing.updated_at || '');
+        if (keepThis) {
+          duplicateRows.push({ team_id: existing.team_id, season: existing.season, updated_at: existing.updated_at });
+          seen.set(key, sq);
+        } else {
+          duplicateRows.push({ team_id: sq.team_id, season: sq.season, updated_at: sq.updated_at });
+        }
+      } else {
+        seen.set(key, sq);
+      }
+    }
+
+    if (orphanedIds.size > 0) {
+      const ids = [...orphanedIds];
+      const batchSize = 200;
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batch = ids.slice(i, i + batchSize);
+        const { error } = await supabase
+          .from('team_squads')
+          .delete()
+          .eq('season', CURRENT_SEASON)
+          .in('team_id', batch);
+        if (!error) removed += batch.length;
+        else console.error('[CLEANUP] Orphan silme hatasi:', error.message);
+      }
+      console.log(`🧹 [CLEANUP] ${removed} orphaned squad kaydi silindi (static_teams'te yok)`);
+    }
+
+    if (duplicateRows.length > 0) {
+      console.log(`🧹 [CLEANUP] ${duplicateRows.length} duplicate squad kaydi tespit edildi`);
+      deduped = duplicateRows.length;
+    }
+
+  } catch (err) {
+    console.error('[CLEANUP] Hata:', err.message);
+  }
+
+  return { removed, deduped };
+}
+
 module.exports = {
   syncAllSquads,
   syncOneTeamSquad,
@@ -601,5 +692,6 @@ module.exports = {
   startDailySquadSync,
   stopDailySquadSync,
   getSquadSyncStatus,
+  cleanupOrphanedSquads,
   CURRENT_SEASON,
 };

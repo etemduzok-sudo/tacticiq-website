@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * DB güncelleme raporu - 1 dakikada bir çalışır, önceki raporla karşılaştırmalı yazar.
+ * DB güncelleme raporu - 5 dakikada bir çalışır, önceki raporla karşılaştırmalı yazar.
  * Çıktı: konsol + backend/data/db-status-report.txt (yeni blok eklenir, son MAX_REPORT_BLOCKS blok tutulur)
  * Kullanım: node scripts/db-status-report-every-5min.js
  */
@@ -18,6 +18,7 @@ if (!isConfigured || !supabase) {
 }
 
 const REPORT_FILE = path.join(__dirname, '..', 'data', 'db-status-report.txt');
+const REPORT_LATEST_FILE = path.join(__dirname, '..', 'data', 'db-status-latest.txt');
 const LAST_SNAPSHOT_FILE = path.join(__dirname, '..', 'data', 'db-status-last.json');
 const BASELINE_FILE = path.join(__dirname, '..', 'data', 'db-status-baseline.json');
 const API_USAGE_FILE = path.join(__dirname, '..', 'data', 'api-usage-now.json');
@@ -99,25 +100,88 @@ function appendReportBlock(newBlockText) {
   fs.writeFileSync(REPORT_FILE, content + '\n');
 }
 
-async function fetchStats() {
-  if (!supabase) return null;
-  const r1 = await supabase.from('static_teams').select('*', { count: 'exact', head: true });
-  if (r1.error) {
-    console.error('[DB RAPOR] static_teams sorgu hatasi:', r1.error.message, r1.error.code || '');
+// Kapsam dahili takım ID seti (lig adı + ülke eşleşmesi ile belirlenir)
+let _inScopeTeamIds = null;
+async function getInScopeTeamIds() {
+  if (_inScopeTeamIds) return _inScopeTeamIds;
+  try {
+    const { getAllTrackedLeagues } = require('../config/leaguesScope');
+    const trackedLeagues = getAllTrackedLeagues();
+    const pairs = new Set(trackedLeagues.map(l => l.name + '|' + l.country));
+    const trackedTypes = new Set(['international', 'global', 'continental_club', 'continental_national', 'confederation_format']);
+    const ids = new Set();
+    let off = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data } = await supabase.from('static_teams')
+        .select('api_football_id, league, country, league_type, team_type')
+        .range(off, off + PAGE - 1);
+      if (!data || !data.length) break;
+      for (const t of data) {
+        const key = (t.league || '') + '|' + (t.country || '');
+        if (pairs.has(key) || trackedTypes.has(t.league_type) || t.team_type === 'national') {
+          ids.add(t.api_football_id);
+        }
+      }
+      if (data.length < PAGE) break;
+      off += PAGE;
+    }
+    _inScopeTeamIds = ids;
+    return ids;
+  } catch (e) {
+    console.error('[DB RAPOR] scope hesaplama hatasi:', e.message);
     return null;
   }
-  const totalTeams = r1.count ?? 0;
-  const r2 = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('coach', 'is', null);
-  const r3 = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('colors_primary', 'is', null);
-  const r4 = await supabase.from('team_squads').select('*', { count: 'exact', head: true }).eq('season', 2025);
-  if (r2.error) console.error('[DB RAPOR] static_teams (coach) hatasi:', r2.error.message);
-  if (r3.error) console.error('[DB RAPOR] static_teams (colors) hatasi:', r3.error.message);
-  if (r4.error) console.error('[DB RAPOR] team_squads hatasi:', r4.error.message);
-  const withCoach = r2.count ?? 0;
-  const withColors = r3.count ?? 0;
-  const squads2025 = r4.count ?? 0;
+}
 
-  // Rating: tum kadrolar uzerinden sayim. Kucuk sayfa (150) - "players" JSON buyuk, yanit limiti asilmasin diye.
+async function fetchStats() {
+  if (!supabase) return null;
+  const scopeIds = await getInScopeTeamIds();
+  const isInScope = (id) => !scopeIds || scopeIds.has(id);
+
+  let totalTeams = 0, withCoach = 0, withColors = 0;
+  const PAGE = 1000;
+  let off = 0;
+  while (true) {
+    const { data, error } = await supabase.from('static_teams')
+      .select('api_football_id, coach, colors_primary')
+      .range(off, off + PAGE - 1);
+    if (error) {
+      console.error('[DB RAPOR] static_teams sorgu hatasi:', error.message);
+      return null;
+    }
+    if (!data || !data.length) break;
+    for (const t of data) {
+      if (!isInScope(t.api_football_id)) continue;
+      totalTeams++;
+      if (t.coach) withCoach++;
+      if (t.colors_primary) withColors++;
+    }
+    if (data.length < PAGE) break;
+    off += PAGE;
+  }
+
+  let squads2025 = 0;
+  try {
+    const squadIds = new Set();
+    off = 0;
+    while (true) {
+      const { data: squadTeams, error: sqErr } = await supabase
+        .from('team_squads')
+        .select('team_id')
+        .eq('season', 2025)
+        .range(off, off + PAGE - 1);
+      if (sqErr) { console.error('[DB RAPOR] team_squads hatasi:', sqErr.message); break; }
+      if (!squadTeams?.length) break;
+      squadTeams.forEach(r => { if (isInScope(r.team_id)) squadIds.add(r.team_id); });
+      if (squadTeams.length < PAGE) break;
+      off += PAGE;
+    }
+    squads2025 = squadIds.size;
+  } catch (e) {
+    console.error('[DB RAPOR] team_squads sayim hatasi:', e.message);
+  }
+
   let teamsWithRating = 0, playersWithRating = 0, totalPlayers = 0;
   const pageSize = 150;
   let lastTeamId = null;
@@ -130,12 +194,10 @@ async function fetchStats() {
       .limit(pageSize);
     if (lastTeamId != null) q = q.gt('team_id', lastTeamId);
     const { data: ratingSquads, error: rangeError } = await q;
-    if (rangeError) {
-      console.error('[DB RAPOR] team_squads (range) hatasi:', rangeError.message);
-      break;
-    }
+    if (rangeError) { console.error('[DB RAPOR] team_squads (range) hatasi:', rangeError.message); break; }
     if (!ratingSquads?.length) break;
     for (const squad of ratingSquads) {
+      if (!isInScope(squad.team_id)) { lastTeamId = squad.team_id; continue; }
       if (Array.isArray(squad.players)) {
         totalPlayers += squad.players.length;
         const withRating = squad.players.filter(p => p.rating !== undefined && p.rating !== null);
@@ -190,8 +252,13 @@ async function runReport() {
 
   const lines = [];
   lines.push('');
-  lines.push('========== DB GUNCELLEME RAPORU (1 dk) ==========');
+  lines.push('========== DB GUNCELLEME RAPORU (5 dk) ==========');
   lines.push('Zaman: ' + now.toLocaleString('tr-TR'));
+  lines.push('');
+  lines.push('--- % DURUMU (ne kadar tamamlandi) ---');
+  lines.push(`  Coach: ${s.coachPct}%  |  Renkler: ${s.colorsPct}%  |  Kadrolar: ${s.squadsPct}%  |  Rating: ${s.ratingPct}%`);
+  lines.push(`  GENEL TAMAMLANMA: ${s.avgPct}%`);
+  lines.push('');
 
   const fmt = (label, nowVal, prevVal, suffix = '') => {
     const diff = prevVal != null ? (nowVal - prevVal) : null;
@@ -221,14 +288,14 @@ async function runReport() {
     if (squadsF.diff && squadsF.diff !== 0) parts.push('Kadro ' + (squadsF.diff > 0 ? '+' : '') + squadsF.diff);
     if (ratingPlayersF.diff && ratingPlayersF.diff !== 0) parts.push('Ratingli oyuncu ' + (ratingPlayersF.diff > 0 ? '+' : '') + ratingPlayersF.diff);
     lines.push('');
-    lines.push('  *** 1 DK ILERLEME: VAR  ***  ' + (parts.length ? parts.join(', ') : ''));
+    lines.push('  *** 5 DK ICINDE DEGISIM: VAR  ***  ' + (parts.length ? parts.join(', ') : ''));
   } else {
     lines.push('');
-    lines.push('  *** 1 DK ILERLEME: YOK - run-phased-db-complete.js calismiyor veya bu aralikta veri degismedi. Ilerleme icin script\'i baslatin. ***');
+    lines.push('  *** 5 DK ICINDE DEGISIM: YOK - run-phased-db-complete.js calismiyor veya bu aralikta veri degismedi. ***');
   }
   lines.push('');
 
-  lines.push('--- 1 DK ONCEKI OLCUM vs SIMDI ---');
+  lines.push('--- 5 DK ONCEKI OLCUM vs SIMDI ---');
   lines.push(coachF.line);
   lines.push(withCoachF.line);
   lines.push(withColorsF.line);
@@ -268,7 +335,7 @@ async function runReport() {
   lines.push('  Not: Bu sayi tum uygulama toplamidir (backend + sync). Neden %42 istek DB\'de %42 ilerleme degil: her takim 4-6 istek, bos/429 yanitlar da sayilir.');
   lines.push('');
   const tahminiSaat = estimateHoursTo100(s);
-  lines.push('--- OZET ---');
+  lines.push('--- OZET (tekrar) ---');
   lines.push(`  Coach: ${s.coachPct}% | Renkler: ${s.colorsPct}% | Kadrolar: ${s.squadsPct}% | Rating: ${s.ratingPct}%`);
   lines.push(`  GENEL TAMAMLANMA: ${s.avgPct}%`);
   if (s.totalTeams === 0) {
@@ -283,7 +350,7 @@ async function runReport() {
     lines.push('  Hedef: %100 tamamlandi.');
   }
   if (s.totalTeams > 0) {
-    lines.push('  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.');
+    lines.push('  Not: Ilerleme icin run-phased-db-complete.js calismali.');
   }
   lines.push('================================================');
   lines.push('');
@@ -299,12 +366,16 @@ async function runReport() {
   }
 
   appendReportBlock(text);
+  ensureDataDir();
+  fs.writeFileSync(REPORT_LATEST_FILE, text + '\n', 'utf8');
   saveSnapshot(s);
 }
 
 async function main() {
   ensureDataDir();
-  console.log('DB raporu 5 dakikada bir yazilacak. Rapor dosyasi: ' + REPORT_FILE);
+  console.log('DB raporu 5 dakikada bir yazilacak.');
+  console.log('  - Son rapor (tek blok): ' + REPORT_LATEST_FILE);
+  console.log('  - Gecmis (son 100 blok): ' + REPORT_FILE);
   console.log('Ilk rapor simdi aliniyor...\n');
 
   await runReport();

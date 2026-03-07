@@ -1,5 +1,5 @@
 /**
- * API-Football oyuncu istatistiklerinden PowerScore ve 6 öznitelik (0–100).
+ * API-Football oyuncu istatistiklerinden PowerScore ve 6 öznitelik (0-100).
  * Pozisyona göre ağırlıklı PowerScore + sakatlık cezası + isteğe bağlı disiplin.
  *
  * API-Football statistics[0]: games, goals, passes, dribbles, tackles, duels, shots, fouls, cards.
@@ -12,6 +12,10 @@ const POSITION_BASE = {
   Attacker: 72,
 };
 
+// Rating tier bonusu: Top5 lig +3, Kıta kulüp turnuvaları +5
+const TOP5_LEAGUE_IDS = new Set([39, 140, 78, 135, 61]);
+const CONTINENTAL_LEAGUE_IDS = new Set([2, 3, 848, 13, 15]);
+
 function parseNum(val) {
   if (val == null) return 0;
   if (typeof val === 'number' && !Number.isNaN(val)) return val;
@@ -19,21 +23,99 @@ function parseNum(val) {
   return Number.isNaN(n) ? 0 : n;
 }
 
-/** 50–99 aralığına clamp (FIFA benzeri) */
+/** 50-99 aralığına clamp (FIFA benzeri) */
 function clamp0_100(n) {
   return Math.max(50, Math.min(99, Math.round(n)));
 }
 
 /**
- * Ham istatistiklerden 6 özniteliği 0–100 hesaplar (min-max proxy; lig+pozisyon batch’te yapılabilir).
- * Shooting: goals, shots on target, total shots, shot accuracy proxy
- * Passing: passes, key passes, pass accuracy, assists
- * Dribbling: dribbles attempts/success, duels won (ground)
- * Defense: tackles, interceptions, blocks, duels won
- * Physical: duels total/won, fouls drawn/committed balance, minutes
- * Pace: minutes + dribbles + duels tempo proxy (düşük ağırlık)
+ * Kaleciye özel 6 öznitelik (FIFA GK: Reflexes, Kicking, Passing, Handling, Positioning, Diving).
+ * Frontend aynı 6 alanı (pace,shooting,passing,dribbling,defending,physical) bekliyor:
+ *   pace=Reflexes, shooting=Kicking, passing=Passing, dribbling=Handling, defense=Positioning, physical=Diving
  */
-function rawAttributesFromStats(latestStats) {
+function rawGkAttributesFromStats(latestStats) {
+  const games = latestStats?.games || {};
+  const goalsObj = latestStats?.goals || {};
+  const passesObj = latestStats?.passes || {};
+  const penaltyObj = latestStats?.penalty || {};
+  const cardsObj = latestStats?.cards || {};
+  const foulsObj = latestStats?.fouls || {};
+
+  const appearances = Math.max(1, parseNum(games.appearences) || parseNum(games.appearance));
+  const minutes = parseNum(games.minutes);
+
+  const saves = parseNum(goalsObj.saves);
+  const conceded = parseNum(goalsObj.conceded);
+  const penaltySaved = parseNum(penaltyObj.saved);
+
+  const passesTotal = parseNum(passesObj.total);
+  let passAccuracy = 0;
+  if (passesObj.accuracy != null) passAccuracy = parseNum(passesObj.accuracy);
+
+  const savesPerGame = saves / appearances;
+  const savePct = (saves + conceded) > 0 ? (saves / (saves + conceded)) * 100 : 50;
+  const concededPerGame = conceded / appearances;
+  const cleanSheetRate = concededPerGame <= 0.5 ? 90 : concededPerGame <= 0.8 ? 82 : concededPerGame <= 1.0 ? 75 : concededPerGame <= 1.5 ? 68 : 60;
+
+  // Reflexes (pace slot): kurtarış yüzdesi + kurtarış hacmi
+  const reflexBase = savePct >= 80 ? 88 : savePct >= 75 ? 84 : savePct >= 70 ? 78 : savePct >= 65 ? 72 : 65;
+  const reflexBonus = Math.min(8, savesPerGame * 2);
+  const reflexes = reflexBase + reflexBonus;
+
+  // Kicking (shooting slot): pas dağıtımı uzun mesafe proxy
+  const kickBase = passAccuracy >= 80 ? 80 : passAccuracy >= 70 ? 74 : passAccuracy >= 60 ? 68 : 62;
+  const kickVolume = Math.min(8, (passesTotal / appearances) / 4);
+  const kicking = kickBase + kickVolume;
+
+  // Passing (passing slot): kısa pas isabeti
+  const passingGk = passAccuracy >= 85 ? 85 : passAccuracy >= 75 ? 78 : passAccuracy >= 65 ? 72 : 65;
+
+  // Handling (dribbling slot): kurtarış temizliği + penaltı kurtarışları
+  const handlingBase = savePct >= 78 ? 85 : savePct >= 72 ? 78 : savePct >= 65 ? 72 : 65;
+  const penaltyBonus = Math.min(10, penaltySaved * 5);
+  const handling = handlingBase + penaltyBonus;
+
+  // Positioning (defense slot): gol yeme oranına dayalı
+  const positioning = cleanSheetRate;
+
+  // Diving (physical slot): atletizm proxy (dakika + kurtarış hacmi)
+  const divingBase = savesPerGame >= 4 ? 88 : savesPerGame >= 3 ? 82 : savesPerGame >= 2 ? 76 : 68;
+  const divingMinutes = Math.min(8, (minutes / Math.max(1, appearances)) / 10);
+  const diving = divingBase + divingMinutes;
+
+  const yellow = parseNum(cardsObj.yellow ?? 0);
+  const red = parseNum(cardsObj.red ?? 0);
+  const cardsTotal = yellow + red * 2;
+  const minutesPer90 = Math.max(1, minutes / 90);
+  const foulsCommitted = parseNum(foulsObj.committed ?? 0);
+
+  return {
+    shooting: clamp0_100(kicking),
+    passing: clamp0_100(passingGk),
+    dribbling: clamp0_100(handling),
+    defense: clamp0_100(positioning),
+    physical: clamp0_100(diving),
+    pace: clamp0_100(reflexes),
+    cardsPer90: cardsTotal / minutesPer90,
+    foulsPer90: foulsCommitted / minutesPer90,
+    minutes,
+    appearances,
+  };
+}
+
+function isGoalkeeperPosition(position) {
+  const p = (position || '').toLowerCase();
+  return p.includes('goalkeeper') || p === 'gk' || p === 'g';
+}
+
+/**
+ * Ham istatistiklerden 6 özniteliği 0-100 hesaplar.
+ * Kaleciler için otomatik olarak GK-özel formül kullanılır.
+ */
+function rawAttributesFromStats(latestStats, position) {
+  if (isGoalkeeperPosition(position || latestStats?.games?.position)) {
+    return rawGkAttributesFromStats(latestStats);
+  }
   const games = latestStats?.games || {};
   const goalsObj = latestStats?.goals || {};
   const passesObj = latestStats?.passes || {};
@@ -43,9 +125,6 @@ function rawAttributesFromStats(latestStats) {
   const shotsObj = latestStats?.shots || {};
   const foulsObj = latestStats?.fouls || {};
   const cardsObj = latestStats?.cards || {};
-  // API bazen interceptions/blocks ayrı vermeyebilir
-  const interceptions = parseNum(latestStats?.interceptions?.total ?? latestStats?.interceptions ?? 0);
-  const blocks = parseNum(latestStats?.blocks?.total ?? latestStats?.blocks ?? 0);
 
   const appearances = Math.max(1, parseNum(games.appearences) || parseNum(games.appearance));
   const minutes = parseNum(games.minutes);
@@ -74,7 +153,6 @@ function rawAttributesFromStats(latestStats) {
 
   const foulsDrawn = parseNum(foulsObj.drawn ?? 0);
   const foulsCommitted = parseNum(foulsObj.committed ?? foulsObj ?? 0);
-  const foulsBalance = Math.max(-50, Math.min(50, foulsDrawn - foulsCommitted)); // -50..+50 proxy
 
   const yellow = parseNum(cardsObj.yellow ?? 0);
   const red = parseNum(cardsObj.red ?? 0);
@@ -83,36 +161,30 @@ function rawAttributesFromStats(latestStats) {
   const cardsPer90 = cardsTotal / minutesPer90;
   const foulsPer90 = foulsCommitted / minutesPer90;
 
-  // —— Shooting 50–99: gol/maç oranı ana faktör (FIFA benzeri)
   const goalsPerGame = goals / appearances;
   const shootingBase = goalsPerGame >= 0.8 ? 90 : goalsPerGame >= 0.5 ? 82 : goalsPerGame >= 0.3 ? 75 : goalsPerGame >= 0.1 ? 68 : 58;
   const shotAccBonus = Math.min(8, shotAccuracy * 0.08);
   const shootingRaw = shootingBase + shotAccBonus;
 
-  // —— Passing 50–99: pas isabeti ana faktör
   const passBase = passAccuracy >= 90 ? 88 : passAccuracy >= 85 ? 82 : passAccuracy >= 80 ? 78 : passAccuracy >= 75 ? 72 : passAccuracy >= 70 ? 68 : 62;
   const keyPassBonus = Math.min(8, (keyPasses / appearances) * 2);
   const assistBonus = Math.min(6, (assists / appearances) * 6);
   const passingRaw = passBase + keyPassBonus + assistBonus;
 
-  // —— Dribbling 50–99: dribling başarı oranı ana faktör
   const dribBase = dribbleRate >= 70 ? 85 : dribbleRate >= 60 ? 78 : dribbleRate >= 50 ? 72 : dribbleRate >= 40 ? 66 : 58;
   const dribVolumeBonus = Math.min(10, (dribbleSuccess / appearances) * 2);
   const dribblingRaw = dribBase + dribVolumeBonus;
 
-  // —— Defense 50–99: tackle + duels ana faktör
   const tacklesPerGame = tacklesTotal / appearances;
   const defBase = tacklesPerGame >= 4 ? 88 : tacklesPerGame >= 3 ? 82 : tacklesPerGame >= 2 ? 75 : tacklesPerGame >= 1 ? 68 : 58;
   const defDuelsBonus = Math.min(10, duelsRate * 0.1);
   const defenseRaw = defBase + defDuelsBonus;
 
-  // —— Physical 50–99: duels oranı ana faktör
   const physBase = duelsRate >= 60 ? 85 : duelsRate >= 55 ? 80 : duelsRate >= 50 ? 75 : duelsRate >= 45 ? 70 : 65;
   const physMinutesBonus = Math.min(10, (minutes / Math.max(1, appearances)) / 9);
   const physicalRaw = physBase + physMinutesBonus;
 
-  // —— Pace 50–99: dribling hacmi + aktivite (proxy, gerçek hız yok)
-  const paceBase = 70; // Orta baz (gerçek hız verisi yok)
+  const paceBase = 70;
   const paceDribBonus = Math.min(15, (dribbleAttempts / appearances) * 2);
   const paceActivityBonus = Math.min(10, (duelsTotal / appearances) * 0.5);
   const paceRaw = paceBase + paceDribBonus + paceActivityBonus;
@@ -124,7 +196,6 @@ function rawAttributesFromStats(latestStats) {
     defense: clamp0_100(defenseRaw),
     physical: clamp0_100(physicalRaw),
     pace: clamp0_100(paceRaw),
-    // Disiplin: kart + faul az = yüksek
     cardsPer90,
     foulsPer90,
     minutes,
@@ -143,7 +214,7 @@ const POWER_WEIGHTS = {
   'CB': { defense: 0.45, physical: 0.25, form: 0.15, passing: 0.15 },
   'FB': { defense: 0.25, passing: 0.20, dribbling: 0.20, physical: 0.20, form: 0.15 },
   'WB': { defense: 0.25, passing: 0.20, dribbling: 0.20, physical: 0.20, form: 0.15 },
-  'GK': { defense: 0.50, physical: 0.20, form: 0.15, passing: 0.15 }, // GK stats ayrı eklenebilir
+  'GK': { defense: 0.30, physical: 0.20, pace: 0.25, dribbling: 0.10, passing: 0.05, form: 0.10 },
   default: { passing: 0.25, dribbling: 0.20, shooting: 0.15, defense: 0.15, physical: 0.15, form: 0.10 },
 };
 
@@ -165,13 +236,6 @@ function normalizePositionForWeights(position) {
   return 'default';
 }
 
-/**
- * 6 öznitelik + form ile pozisyona göre PowerScore (0–100).
- * @param {object} attrs - { shooting, passing, dribbling, defense, physical, pace, form? }
- * @param {string} position - API position string
- * @param {string} fitnessStatus - 'fit' | 'doubtful' | 'injured'
- * @param {object} options - { disciplineBonus?: number } DM/CB için +0.05 gibi
- */
 function calculatePowerScore(attrs, position, fitnessStatus = 'fit', options = {}) {
   const w = POWER_WEIGHTS[normalizePositionForWeights(position)] || POWER_WEIGHTS.default;
   const form = typeof attrs.form === 'number' ? attrs.form : 50;
@@ -181,25 +245,18 @@ function calculatePowerScore(attrs, position, fitnessStatus = 'fit', options = {
   if (w.dribbling != null) score += (attrs.dribbling ?? 50) * w.dribbling;
   if (w.defense != null) score += (attrs.defense ?? 50) * w.defense;
   if (w.physical != null) score += (attrs.physical ?? 50) * w.physical;
+  if (w.pace != null) score += (attrs.pace ?? 50) * w.pace;
   if (w.form != null) score += form * w.form;
-  // DM/CB için disiplin bonusu: +0.05 etkisi → skora en fazla +5 (discipline 0–100)
   if (options.disciplineBonus != null) score += options.disciplineBonus;
   const fitnessMultiplier = fitnessStatus === 'injured' ? 0.75 : fitnessStatus === 'doubtful' ? 0.90 : 1;
   return clamp0_100(score * fitnessMultiplier);
 }
 
-/**
- * Disiplin skoru: 100 - normalize(cards_per_90 + fouls_per_90). Yüksek = daha az kart/faul.
- */
 function calculateDiscipline(cardsPer90, foulsPer90) {
   const raw = (cardsPer90 || 0) * 10 + (foulsPer90 || 0) * 2;
   return clamp0_100(100 - Math.min(100, raw * 5));
 }
 
-/**
- * Son 5 maç ortalamasından Form 0–100. Veri yoksa 50 döner.
- * @param {Array<{ shooting, passing, dribbling, defense, physical }>} attributesLast5
- */
 function calculateForm(attributesLast5) {
   if (!attributesLast5 || attributesLast5.length === 0) return 50;
   const n = attributesLast5.length;
@@ -210,12 +267,15 @@ function calculateForm(attributesLast5) {
 }
 
 /**
- * API-Football statistics[0] ile 6 öznitelik (0–100) + rating (geri uyumluluk 65–95) + PowerScore hazırlığı.
- * Tek sezonluk stats için; Form = 50 (batch job’da son 5 maç ile doldurulur).
+ * API-Football statistics[0] ile 6 öznitelik + rating + PowerScore.
+ *
+ * Rating hesaplama:
+ *   1. API-Football games.rating (6.0-10.0) varsa -> x10 + lig tier bonusu
+ *   2. Yoksa -> pozisyon ağırlıklı PowerScore (basit ortalama yerine)
  */
 function calculatePlayerAttributesFromStats(latestStats, playerData = {}) {
   const position = (playerData.position || playerData.pos || (latestStats?.games && latestStats.games.position) || 'Midfielder') + '';
-  const raw = rawAttributesFromStats(latestStats || {});
+  const raw = rawAttributesFromStats(latestStats || {}, position);
 
   const attrs = {
     shooting: raw.shooting,
@@ -224,17 +284,28 @@ function calculatePlayerAttributesFromStats(latestStats, playerData = {}) {
     defense: raw.defense,
     physical: raw.physical,
     pace: raw.pace,
-    form: 50, // batch’te son 5 maç ile güncellenir
+    form: 50,
   };
 
   const discipline = calculateDiscipline(raw.cardsPer90, raw.foulsPer90);
   const posNorm = normalizePositionForWeights(position);
-  const disciplineBonus = (posNorm === 'DM' || posNorm === 'CB') ? (discipline / 100) * 5 : 0; // +0.05 etkisi → max +5
+  const disciplineBonus = (posNorm === 'DM' || posNorm === 'CB') ? (discipline / 100) * 5 : 0;
   const powerScore = calculatePowerScore(attrs, position, 'fit', { disciplineBonus });
 
-  // Rating: 6 özniteliğin ağırlıklı ortalaması (65–95 bandı, FIFA benzeri)
-  const avgAttrs = (attrs.shooting + attrs.passing + attrs.dribbling + attrs.defense + attrs.physical + attrs.pace) / 6;
-  const rating = Math.max(65, Math.min(95, Math.round(avgAttrs)));
+  const apiRating = latestStats?.games?.rating ? parseFloat(latestStats.games.rating) : null;
+
+  let rating;
+  if (apiRating && apiRating >= 5.0 && apiRating <= 10.0) {
+    const leagueId = latestStats?.league?.id || playerData?.leagueId;
+    let tierBonus = 0;
+    if (leagueId && CONTINENTAL_LEAGUE_IDS.has(Number(leagueId))) tierBonus = 5;
+    else if (leagueId && TOP5_LEAGUE_IDS.has(Number(leagueId))) tierBonus = 3;
+    rating = Math.round(apiRating * 10) + tierBonus;
+  } else {
+    rating = Math.round(powerScore);
+  }
+
+  rating = Math.max(60, Math.min(95, rating));
 
   return {
     rating,
@@ -252,10 +323,6 @@ function calculatePlayerAttributesFromStats(latestStats, playerData = {}) {
   };
 }
 
-/**
- * Sakatlık durumuna göre PowerScore çarpanı.
- * Injured: 0.75, Doubtful: 0.90, Fit: 1
- */
 function getFitnessMultiplier(fitnessStatus) {
   const s = (fitnessStatus || 'fit').toLowerCase();
   if (s.includes('injured')) return 0.75;
@@ -263,18 +330,11 @@ function getFitnessMultiplier(fitnessStatus) {
   return 1;
 }
 
-/**
- * Eski calculateRatingFromStats: geri uyumluluk için (65–95).
- */
 function calculateRatingFromStats(latestStats, playerData = {}) {
   const out = calculatePlayerAttributesFromStats(latestStats, playerData);
   return out.rating;
 }
 
-/**
- * Veri yokken kullanılacak pozisyon bazlı başlangıç rating (70/70 değil, gerçekçi fark).
- * FIFA/Transfermarkt benzeri: Kaleci/Defans/Orta/Forvet farklı baz.
- */
 function getDefaultRatingByPosition(position) {
   const pos = (position || '').toLowerCase();
   if (pos.includes('goalkeeper') || pos === 'gk' || pos === 'g') return POSITION_BASE.Goalkeeper;
@@ -297,4 +357,6 @@ module.exports = {
   parseNum,
   clamp0_100,
   POSITION_BASE,
+  TOP5_LEAGUE_IDS,
+  CONTINENTAL_LEAGUE_IDS,
 };

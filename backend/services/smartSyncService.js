@@ -284,7 +284,9 @@ function stopSync() {
 
 function restartSync() {
   stopSync();
-  syncTimer = setInterval(smartFetch, currentInterval);
+  syncTimer = setInterval(() => {
+    smartFetch().catch(err => console.error('❌ [SMART SYNC] Error in smartFetch:', err.message));
+  }, currentInterval);
 }
 
 function getStatus() {

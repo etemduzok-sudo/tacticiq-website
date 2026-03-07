@@ -13,7 +13,7 @@ const apiUsageTracker = require('./apiUsageTracker');
 // CONFIGURATION
 // ============================================
 
-const POLLING_INTERVAL = 8000; // 8 seconds - PRO plan: 75K/day → daha hızlı güncelleme
+const POLLING_INTERVAL = 5000; // 5 seconds - PRO plan: 75K/day, tek /live call tüm maçları döner
 const FINALIZATION_DELAY = 60000; // 1 minute after match ends
 
 let pollingTimer = null;
@@ -268,6 +268,7 @@ async function pollLiveMatches() {
 
   try {
     if (!apiUsageTracker.canMakeMatchSyncCall()) {
+      isPolling = false;
       return;
     }
     // ✅ 0. STALE NS MAÇLARI KONTROL ET (zamanı geçmiş ama hala NS)
@@ -366,10 +367,11 @@ async function pollLiveMatches() {
             // Snapshot: Sadece bitiş düdüğü (API FT) ile birlikte bu anda alınır; tek snapshot.
             await saveMatchEndSnapshot(liveMatch.fixture.id, fullMatch);
             
-            // Schedule finalization (after 1 minute)
-            setTimeout(async () => {
+            setTimeout(() => {
               console.log(`🎯 Finalizing match ${liveMatch.fixture.id}...`);
-              await finalizeMatch(liveMatch.fixture.id);
+              finalizeMatch(liveMatch.fixture.id).catch(err =>
+                console.error(`❌ Finalize match ${liveMatch.fixture.id} error:`, err.message)
+              );
             }, FINALIZATION_DELAY);
           }
         }
@@ -404,8 +406,9 @@ function startPolling() {
   // Run immediately
   pollLiveMatches();
   
-  // Then run on interval
-  pollingTimer = setInterval(pollLiveMatches, POLLING_INTERVAL);
+  pollingTimer = setInterval(() => {
+    pollLiveMatches().catch(err => console.error('❌ Poll error:', err.message));
+  }, POLLING_INTERVAL);
 }
 
 // Stop polling

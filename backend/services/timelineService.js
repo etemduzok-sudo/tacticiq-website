@@ -9,7 +9,7 @@ require('dotenv').config();
 const { supabase } = require('../config/supabase');
 
 // Daha önce kaydedilmiş eventleri takip et (duplicate önleme)
-const processedEvents = new Map(); // match_id -> Set of event keys
+const processedEvents = new Map(); // match_id -> { events: Set, lastAccess: timestamp }
 
 // ============================================
 // EVENT KEY OLUŞTURMA
@@ -47,11 +47,14 @@ async function saveTimelineEvent(matchId, event, currentScore) {
     
     // Daha önce işlendiyse atla
     if (!processedEvents.has(matchId)) {
-      processedEvents.set(matchId, new Set());
+      processedEvents.set(matchId, { events: new Set(), lastAccess: Date.now() });
     }
-    
-    if (processedEvents.get(matchId).has(eventKey)) {
-      return null; // Zaten kaydedilmiş
+
+    const entry = processedEvents.get(matchId);
+    entry.lastAccess = Date.now();
+
+    if (entry.events.has(eventKey)) {
+      return null;
     }
     
     const { data, error } = await supabase
@@ -85,7 +88,7 @@ async function saveTimelineEvent(matchId, event, currentScore) {
     }
     
     // İşlenmiş olarak işaretle
-    processedEvents.get(matchId).add(eventKey);
+    entry.events.add(eventKey);
     
     return data;
   } catch (error) {
@@ -274,24 +277,26 @@ async function processLiveMatches(matches) {
 // BELLEK TEMİZLİĞİ
 // ============================================
 function cleanupProcessedEvents() {
-  // 1 saatten eski maçları temizle
   const now = Date.now();
-  const oneHour = 60 * 60 * 1000;
-  
-  // Her 10 dakikada bir çağrılabilir
-  for (const [matchId, events] of processedEvents.entries()) {
-    // Basit temizlik: 1000'den fazla event varsa temizle
-    if (events.size > 1000) {
+  const THREE_HOURS = 3 * 60 * 60 * 1000;
+  let removed = 0;
+
+  for (const [matchId, entry] of processedEvents.entries()) {
+    if ((now - entry.lastAccess) > THREE_HOURS || entry.events.size > 1000) {
       processedEvents.delete(matchId);
+      removed++;
     }
   }
-  
-  // 500'den fazla maç takip ediliyorsa en eskileri sil
+
   if (processedEvents.size > 500) {
-    const keys = Array.from(processedEvents.keys());
-    const toRemove = keys.slice(0, 200);
-    toRemove.forEach(k => processedEvents.delete(k));
-    console.log(`🧹 Cleaned up ${toRemove.length} old match event caches`);
+    const sorted = [...processedEvents.entries()].sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+    const toRemove = sorted.slice(0, 200);
+    toRemove.forEach(([k]) => processedEvents.delete(k));
+    removed += toRemove.length;
+  }
+
+  if (removed > 0) {
+    console.log(`🧹 Cleaned up ${removed} old match event caches (remaining: ${processedEvents.size})`);
   }
 }
 

@@ -1044,12 +1044,11 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     }
   }, [loading, hasLoadedOnce, favoriteTeams?.length, pastMatches?.length, liveMatches?.length, upcomingMatches?.length]);
 
-  // Gelecek maçlar: önümüzdeki 30 gün (önceden 6 saatti – kullanıcı gelecek maçları göremiyordu)
+  // Gelecek maçlar: sezon sonuna kadar tümü (zaman filtresi yok)
   const now = Date.now() / 1000;
-  const UPCOMING_WINDOW_SEC = 30 * 24 * 60 * 60; // 30 gün
   const allUpcomingMatches = upcomingMatches.filter(match => {
     const matchTime = match.fixture.timestamp;
-    return matchTime >= now && matchTime <= now + UPCOMING_WINDOW_SEC;
+    return matchTime >= now;
   });
 
   // ✅ Filter matches by selected teams (ID and name matching) - ÇOKLU SEÇİM

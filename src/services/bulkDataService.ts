@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApiEndpoint, API_CONFIG } from '../config/AppVersion';
 import { Platform } from 'react-native';
 import { logger } from '../utils/logger';
+import { isCompetitiveLeague } from '../data/staticTeamsData';
 
 // ============ STORAGE KEYS ============
 export const BULK_STORAGE_KEYS = {
@@ -491,6 +492,9 @@ export async function getTeamLeaguesFromBulkForTeams(teamIds: number[]): Promise
   if (!teamIds.length) return out;
   const keys = teamIds.map(id => `${BULK_STORAGE_KEYS.BULK_MATCHES_PREFIX}${id}`);
   const results = await AsyncStorage.multiGet(keys);
+  const nowTs = Math.floor(Date.now() / 1000);
+  const threeMonthsAgoTs = nowTs - 90 * 24 * 3600;
+
   for (let i = 0; i < teamIds.length; i++) {
     const teamId = teamIds[i];
     const raw = results[i]?.[1];
@@ -504,7 +508,15 @@ export async function getTeamLeaguesFromBulkForTeams(teamIds: number[]): Promise
       if (Array.isArray(matches)) {
         for (const m of matches) {
           const name = m.league?.name;
-          if (name && typeof name === 'string') names.add(name.trim());
+          if (!name || typeof name !== 'string') continue;
+          if (!isCompetitiveLeague(name)) continue;
+          const ts = m.fixture?.timestamp || 0;
+          const status = (m.fixture?.status?.short || '').toUpperCase();
+          const isUpcoming = status === 'NS' || status === 'TBD' || ts > nowTs;
+          const isRecent = ts >= threeMonthsAgoTs && ts <= nowTs;
+          if (isUpcoming || isRecent) {
+            names.add(name.trim());
+          }
         }
       }
       out[teamId] = Array.from(names).sort((a, b) => a.localeCompare(b));

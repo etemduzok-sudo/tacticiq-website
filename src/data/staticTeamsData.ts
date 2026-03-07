@@ -406,28 +406,69 @@ export function getFallbackClubTeamsForProfile(): StaticTeam[] {
 // API-Football lig adı → Türkçe gösterim (favori ekranda gerçek ligler için)
 // ==========================================
 const LEAGUE_NAME_TR: Record<string, string> = {
+  // UEFA kulüp turnuvaları
   'UEFA Champions League': 'Şampiyonlar Ligi',
   'Champions League': 'Şampiyonlar Ligi',
   'UEFA Europa League': 'Avrupa Ligi',
   'Europa League': 'Avrupa Ligi',
   'UEFA Europa Conference League': 'Konferans Ligi',
   'Conference League': 'Konferans Ligi',
+  // Milli takım turnuvaları
+  'UEFA Nations League': 'Uluslar Ligi',
+  'Nations League': 'Uluslar Ligi',
+  'Euro Championship': 'Avrupa Futbol Şampiyonası',
+  'European Championship': 'Avrupa Futbol Şampiyonası',
+  'Euro Qualification': 'Avrupa Şampiyonası Elemeleri',
+  'World Cup': 'Dünya Kupası',
+  'FIFA World Cup': 'Dünya Kupası',
+  'World Cup - Qualification Europe': 'Dünya Kupası Elemeleri',
+  'World Cup - Qualification South America': 'Dünya Kupası Elemeleri',
+  'World Cup - Qualification Asia': 'Dünya Kupası Elemeleri',
+  'World Cup - Qualification Africa': 'Dünya Kupası Elemeleri',
+  'World Cup - Qualification CONCACAF': 'Dünya Kupası Elemeleri',
+  'Copa America': 'Copa America',
+  'Africa Cup of Nations': 'Afrika Uluslar Kupası',
+  'Asian Cup': 'Asya Kupası',
+  // Türkiye
   'Super Lig': 'Süper Lig',
   'Süper Lig': 'Süper Lig',
   'Turkey Cup': 'Türkiye Kupası',
   'Turkish Cup': 'Türkiye Kupası',
   'Türkiye Kupası': 'Türkiye Kupası',
+  // Büyük ligler
   'Premier League': 'Premier League',
   'La Liga': 'La Liga',
   'Serie A': 'Serie A',
   'Bundesliga': 'Bundesliga',
   'Ligue 1': 'Ligue 1',
+  'Primeira Liga': 'Primeira Liga',
+  'Eredivisie': 'Eredivisie',
+  // Büyük kupalar
   'FA Cup': 'FA Cup',
   'Copa del Rey': 'Copa del Rey',
   'DFB-Pokal': 'DFB-Pokal',
   'Coppa Italia': 'Coppa Italia',
   'Coupe de France': 'Coupe de France',
+  'EFL Cup': 'Lig Kupası',
+  'League Cup': 'Lig Kupası',
+  'Carabao Cup': 'Lig Kupası',
+  // Güney Amerika
+  'Copa Libertadores': 'Copa Libertadores',
+  'Copa Sudamericana': 'Copa Sudamericana',
 };
+
+const EXCLUDED_LEAGUE_PATTERNS = [
+  'friendl', 'super cup', 'supercup', 'supercopa', 'supercoupe',
+  'community shield', 'charity shield', 'trophée', 'trofeo',
+  'club world cup', 'intercontinental',
+];
+
+/** Rekabetçi turnuva mı? (Friendlies, Super Cup gibi tek seferlik organizasyonları hariç tutar) */
+export function isCompetitiveLeague(name: string): boolean {
+  if (!name) return false;
+  const lower = name.toLowerCase().trim();
+  return !EXCLUDED_LEAGUE_PATTERNS.some(p => lower.includes(p));
+}
 
 /** API/DB'den gelen lig adını Türkçe gösterim için döndürür (bilinmiyorsa aynen döner) */
 export function leagueNameToTurkish(apiName: string): string {
@@ -436,10 +477,12 @@ export function leagueNameToTurkish(apiName: string): string {
   return LEAGUE_NAME_TR[trimmed] ?? trimmed;
 }
 
-/** Lig adları listesini Türkçe gösterime çevirir */
+/** Lig adları listesini filtreler ve Türkçe gösterime çevirir */
 export function leagueNamesToTurkish(names: string[]): string[] {
   if (!Array.isArray(names)) return [];
-  return names.map(leagueNameToTurkish);
+  return names
+    .filter(isCompetitiveLeague)
+    .map(leagueNameToTurkish);
 }
 
 // ==========================================

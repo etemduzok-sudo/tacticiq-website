@@ -7,15 +7,17 @@
 
 const footballApi = require('./footballApi');
 const databaseService = require('./databaseService');
+const { resolveTeamName, loadStaticNameCache } = require('./databaseService');
 const { supabase } = require('../config/supabase');
+const { cleanupOrphanedSquads } = require('./squadSyncService');
 
 // ============================================
 // CONFIGURATION
 // ============================================
 
-const SYNC_INTERVAL = 30 * 60 * 1000; // 30 minutes (optimized for 7500/day limit)
-const DAYS_TO_FETCH = 7; // Bugün + 7 gün ileri (topla 8 gün)
-const MAX_API_CALLS_PER_SYNC = 150; // Use full API limit: 7500/day ÷ 48 syncs = ~156/sync
+const SYNC_INTERVAL = 30 * 60 * 1000; // 30 dakika
+const DAYS_TO_FETCH = 7; // Bugün + 7 gün ileri (toplam 8 gün)
+const MAX_API_CALLS_PER_SYNC = 500; // PRO plan: 75K/day, günde ~48 sync = ~1500 kullanılabilir
 
 let syncTimer = null;
 let isSyncing = false;
@@ -44,16 +46,19 @@ function getDateRange(days) {
   return dates;
 }
 
-// Upsert team into database
+// Upsert team into database (static_teams'deki ismi tercih eder)
 async function upsertTeam(team) {
   if (!team || !team.id) return;
   
   try {
+    await loadStaticNameCache();
+    const displayName = resolveTeamName(team.id, team.name);
+    
     await supabase
       .from('teams')
       .upsert({
         id: team.id,
-        name: team.name,
+        name: displayName,
         code: team.code || null,
         logo: null, // ⚠️ TELİF HAKKI: Kulüp armaları telifli - ASLA kaydedilmez (sadece renkler kullanılır)
         country: team.country || null,
@@ -152,6 +157,8 @@ async function syncMatches() {
   console.log('╚════════════════════════════════════════╝');
   console.log('');
 
+  try { await cleanupOrphanedSquads(); } catch (e) { console.warn('Orphan cleanup skipped:', e.message); }
+
   let totalMatches = 0;
   let successCount = 0;
   let apiCalls = 0;
@@ -246,7 +253,7 @@ function startSync() {
   console.log(`🔄 Starting daily sync (interval: ${intervalMinutes} minutes)`);
   console.log(`📊 Will fetch ${DAYS_TO_FETCH + 2} days (yesterday + today + ${DAYS_TO_FETCH} forward)`);
   console.log(`⚡ Max ${MAX_API_CALLS_PER_SYNC} API calls per sync`);
-  console.log(`📈 Expected API usage: ~${totalApiCallsPerDay.toFixed(0)} calls/day (limit: 7500)`);
+  console.log(`📈 Expected API usage: ~${totalApiCallsPerDay.toFixed(0)} calls/day (limit: 75000)`);
   
   // Run immediately on startup
   setTimeout(() => syncMatches(), 5000); // 5 seconds delay after startup

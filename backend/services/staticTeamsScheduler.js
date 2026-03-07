@@ -73,7 +73,11 @@ async function rateLimitedRequest(endpoint) {
 // ============================================
 const {
   getAllTrackedLeagues,
+  getAllTrackedLeagueIds,
   DOMESTIC_TOP_TIER,
+  DOMESTIC_SECOND_TIER,
+  DOMESTIC_CUP,
+  DOMESTIC_SUPER_CUP,
   CONTINENTAL_CLUB,
   CONTINENTAL_NATIONAL,
   CONFEDERATION_LEAGUE_FORMAT,
@@ -81,30 +85,16 @@ const {
 } = require('../config/leaguesScope');
 const TRACKED_LEAGUES = getAllTrackedLeagues();
 
-// Lig ID'sine göre kategori belirleme
 function getLeagueType(leagueId) {
-  // 1. Domestic Top Tier
-  if (DOMESTIC_TOP_TIER.some(l => l.id === leagueId)) {
-    return 'domestic_top';
-  }
-  // 2. Continental Club
-  if (CONTINENTAL_CLUB.some(l => l.id === leagueId)) {
-    return 'continental_club';
-  }
-  // 3. Continental National
-  if (CONTINENTAL_NATIONAL.some(l => l.id === leagueId)) {
-    return 'continental_national';
-  }
-  // 4. Confederation League Format
-  if (CONFEDERATION_LEAGUE_FORMAT.some(l => l.id === leagueId)) {
-    return 'confederation_format';
-  }
-  // 5. Global Competitions
-  if (GLOBAL_COMPETITIONS.some(l => l.id === leagueId)) {
-    return 'global';
-  }
-  // Default (eski kod uyumluluğu için)
-  return leagueId < 100 ? 'domestic_top' : 'continental';
+  if (DOMESTIC_TOP_TIER.some(l => l.id === leagueId)) return 'domestic_top';
+  if (DOMESTIC_SECOND_TIER && DOMESTIC_SECOND_TIER.some(l => l.id === leagueId)) return 'domestic_top';
+  if (DOMESTIC_CUP && DOMESTIC_CUP.some(l => l.id === leagueId)) return 'domestic_top';
+  if (DOMESTIC_SUPER_CUP && DOMESTIC_SUPER_CUP.some(l => l.id === leagueId)) return 'domestic_top';
+  if (CONTINENTAL_CLUB.some(l => l.id === leagueId)) return 'continental_club';
+  if (CONTINENTAL_NATIONAL.some(l => l.id === leagueId)) return 'continental_national';
+  if (CONFEDERATION_LEAGUE_FORMAT.some(l => l.id === leagueId)) return 'confederation_format';
+  if (GLOBAL_COMPETITIONS.some(l => l.id === leagueId)) return 'global';
+  return 'domestic_top';
 }
 
 // ============================================

@@ -358,9 +358,22 @@ router.post('/download', async (req, res) => {
   }
 });
 
+// Takım lig/kupa listesinde gösterilmemesi gereken organizasyonlar
+const EXCLUDED_LEAGUE_PATTERNS = [
+  'friendl', 'super cup', 'supercup', 'supercopa', 'supercoupe',
+  'community shield', 'charity shield', 'trophée', 'trofeo',
+  'club world cup', 'intercontinental',
+];
+function isCompetitiveLeague(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase().trim();
+  return !EXCLUDED_LEAGUE_PATTERNS.some(p => lower.includes(p));
+}
+
 // GET /api/bulk-data/team-leagues?teamIds=611,645,549&season=2025
-// Takımın o sezonda oynadığı ligleri API-Football/DB'den döndürür (favori ekranda gerçek ligler için)
-// Sezon: 2025 = 2025-26 (güncel sezon). Sadece istenen sezon kullanılır.
+// Takımın güncel olarak mücadele ettiği ligleri DB/API'den döndürür.
+// Sadece yaklaşan veya son 90 gündeki maçların ligleri gösterilir.
+// Friendlies, Super Cup gibi tek seferlik organizasyonlar hariç tutulur.
 router.get('/team-leagues', async (req, res) => {
   try {
     const { teamIds, season } = req.query;
@@ -378,38 +391,66 @@ router.get('/team-leagues', async (req, res) => {
       return res.json({ success: true, data: {} });
     }
     const currentSeason = parseInt(season || '2025', 10);
+    const nowTs = Math.floor(Date.now() / 1000);
+    const threeMonthsAgoTs = nowTs - 90 * 24 * 3600;
 
     const data = {};
     for (const tid of ids) {
-      const names = new Set();
-      let matches = [];
+      const activeLeagues = new Set();
+      let allMatches = [];
 
+      // DB'den güncel + önceki sezonları topla
       if (databaseService.enabled) {
-        const dbRows = await databaseService.getTeamMatches(tid, currentSeason);
-        if (dbRows && dbRows.length > 0) {
-          matches = dbRows.map((row) => ({
-            league: row.league ? { name: row.league.name } : {},
-          }));
+        const seasons = [currentSeason - 1, currentSeason, currentSeason + 1];
+        for (const s of seasons) {
+          try {
+            const dbRows = await databaseService.getTeamMatches(tid, s);
+            if (dbRows && dbRows.length > 0) {
+              allMatches.push(...dbRows.map((row) => ({
+                league: row.league ? { name: row.league.name } : {},
+                status: row.status_short || row.status || '',
+                timestamp: row.fixture_timestamp || 0,
+              })));
+            }
+          } catch (_) {}
         }
       }
-      if (matches.length === 0) {
+
+      // DB'de hiç maç yoksa API'den çek
+      if (allMatches.length === 0) {
         try {
           const apiData = await footballApi.getFixturesByTeam(tid, currentSeason);
           if (apiData.response && apiData.response.length > 0) {
-            matches = apiData.response;
+            allMatches = apiData.response.map((m) => ({
+              league: m.league ? { name: m.league.name } : {},
+              status: m.fixture?.status?.short || '',
+              timestamp: m.fixture?.timestamp || 0,
+            }));
             if (databaseService.enabled) {
-              await databaseService.upsertMatches(apiData.response).catch(() => {});
+              databaseService.upsertMatches(apiData.response).catch(() => {});
             }
           }
         } catch (e) {
           console.warn(`[team-leagues] API failed team ${tid}:`, e.message);
         }
       }
-      for (const m of matches) {
+
+      // Sadece aktif turnuvaları seç: yaklaşan veya son 90 günde oynanan
+      for (const m of allMatches) {
         const name = m.league?.name;
-        if (name && typeof name === 'string') names.add(name.trim());
+        if (!name || typeof name !== 'string') continue;
+        if (!isCompetitiveLeague(name)) continue;
+
+        const ts = m.timestamp || 0;
+        const status = (m.status || '').toUpperCase();
+        const isUpcoming = status === 'NS' || status === 'TBD' || ts > nowTs;
+        const isRecent = ts >= threeMonthsAgoTs && ts <= nowTs;
+        if (isUpcoming || isRecent) {
+          activeLeagues.add(name.trim());
+        }
       }
-      data[tid] = Array.from(names).sort((a, b) => a.localeCompare(b));
+
+      data[tid] = Array.from(activeLeagues).sort((a, b) => a.localeCompare(b));
     }
 
     res.json({ success: true, data });

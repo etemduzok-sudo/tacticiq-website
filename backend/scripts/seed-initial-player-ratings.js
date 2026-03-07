@@ -17,10 +17,10 @@ const path = require('path');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 const SEASON = 2025;
-const RATE_MS = 280;
+const RATE_MS = 200;
 const PROGRESS_FILE = path.join(__dirname, '..', 'data', 'seed-ratings-progress.json');
-const API_DAILY_LIMIT = 7500;
-const MAX_API_THIS_RUN = API_DAILY_LIMIT - 50;
+const API_DAILY_LIMIT = 75000;
+const MAX_API_THIS_RUN = 40000; // Günün geri kalanı için 35K rezerv bırak
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('❌ SUPABASE_URL / SUPABASE_SERVICE_KEY gerekli');

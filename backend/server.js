@@ -21,11 +21,14 @@ process.on('uncaughtException', (error) => {
   console.error(`\n❌ [${timestamp}] UNCAUGHT EXCEPTION:`);
   console.error('Error:', error.message);
   console.error('Stack:', error.stack);
-  // ⚠️ Critical error - ama backend'i durdurma, sadece log'la
-  // Watchdog script backend'i yeniden başlatacak
+
+  if (error.code === 'EADDRINUSE') {
+    console.error('🛑 Port zaten kullanılıyor — process çıkıyor (nodemon yeniden başlatacak)');
+    process.exit(1);
+  }
+
   console.error('⚠️ Backend çalışmaya devam ediyor... (Watchdog yeniden başlatabilir)');
   console.error('');
-  // process.exit(1); // KALDIRILDI - Backend durmasın
 });
 
 process.on('unhandledRejection', (reason, promise) => {
@@ -811,76 +814,6 @@ app.get('/api/admin/player-ratings/leagues', authenticateApiKey, (req, res) => {
   });
 });
 
-// GET/POST /api/admin/backup-db - DB yedek alır ve Supabase Storage'a yükler (cron-job.org varsayılan GET ile tetiklenebilir)
-// API key: header x-api-key veya query ?api_key=XXX (cron-job.org'da POST/header yoksa URL'de api_key kullanın)
-const BACKUP_STORAGE_BUCKET = 'db-backups';
-function copyBackupApiKeyFromQuery(req, res, next) {
-  if (!req.headers['x-api-key'] && req.query.api_key) {
-    req.headers['x-api-key'] = req.query.api_key;
-  }
-  next();
-}
-async function runBackupToStorage(supabase, folderName) {
-  const { TABLES_TO_BACKUP, fetchOneTable } = require('./services/backupService');
-  const uploaded = [];
-  const results = [];
-  let totalRecords = 0;
-  for (const tableName of TABLES_TO_BACKUP) {
-    const data = await fetchOneTable(supabase, tableName);
-    if (data === null) {
-      results.push({ table: tableName, success: false, count: 0 });
-      continue;
-    }
-    const body = Buffer.from(JSON.stringify(data), 'utf8');
-    const { error } = await supabase.storage
-      .from(BACKUP_STORAGE_BUCKET)
-      .upload(`${folderName}/${tableName}.json`, body, { contentType: 'application/json', upsert: true });
-    if (error) {
-      console.error(`[backup-db] Storage upload ${tableName}:`, error.message);
-      return { ok: false, folderName, uploaded, error: error.message };
-    }
-    uploaded.push(tableName);
-    results.push({ table: tableName, success: true, count: data.length });
-    totalRecords += data.length;
-  }
-  const summary = { timestamp: new Date().toISOString(), folderName, tables: results, totalRecords };
-  const { error: summaryErr } = await supabase.storage
-    .from(BACKUP_STORAGE_BUCKET)
-    .upload(`${folderName}/_summary.json`, Buffer.from(JSON.stringify(summary), 'utf8'), { contentType: 'application/json', upsert: true });
-  if (summaryErr) console.warn('[backup-db] _summary upload:', summaryErr.message);
-  else uploaded.push('_summary.json');
-  return { ok: true, folderName, totalRecords, uploaded };
-}
-
-async function handleBackupDb(req, res) {
-  const { supabase } = require('./config/supabase');
-  if (!supabase) {
-    return res.status(503).json({ success: false, error: 'Supabase yapılandırılmadı.' });
-  }
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const folderName = `backup-${timestamp}`;
-  // Hemen 202 dön; yedek arka planda çalışsın (cron-job.org ~30sn timeout olmasın)
-  res.status(202).json({
-    success: true,
-    folderName,
-    message: 'Yedek arka planda başlatıldı. Birkaç dakika içinde Supabase Storage → db-backups içinde görünür. Cron timeout almaz.',
-  });
-  setImmediate(async () => {
-    try {
-      const result = await runBackupToStorage(supabase, folderName);
-      if (result.ok) {
-        console.log(`[backup-db] Tamamlandı: ${result.folderName}, ${result.totalRecords} kayıt, ${result.uploaded.length} dosya`);
-      } else {
-        console.error(`[backup-db] Hata: ${result.folderName}`, result.error);
-      }
-    } catch (err) {
-      console.error('[backup-db] Arka plan hatası:', err);
-    }
-  });
-}
-app.get('/api/admin/backup-db', copyBackupApiKeyFromQuery, authenticateApiKey, handleBackupDb);
-app.post('/api/admin/backup-db', authenticateApiKey, handleBackupDb);
-
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -914,6 +847,21 @@ app.listen(PORT, '0.0.0.0', () => {
       if (backgroundJobsDisabled) {
         console.log('\n⏸️  DISABLE_BACKGROUND_JOBS=true → Tüm arka plan scriptleri KAPALI (API kotası korunur). Açmak için .env\'de kaldırın.\n');
         return;
+      }
+
+      // ============================================
+      // 0a. TEAM NAME SYNC (teams tablosunu static_teams'den düzelt)
+      // ============================================
+      try {
+        const { syncTeamNamesFromStaticTeams } = require('./services/databaseService');
+        syncTeamNamesFromStaticTeams().then(n => {
+          if (n > 0) {
+            console.log(`🏷️ Team name sync completed: ${n} teams updated`);
+            try { require('./routes/matches').clearTeamMatchesCache(); } catch (_) {}
+          }
+        });
+      } catch (error) {
+        console.error('❌ Failed to sync team names:', error.message);
       }
 
       // ============================================

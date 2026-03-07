@@ -187,8 +187,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       }
 
       const cacheAge = Date.now() - parseInt(cacheTimestamp, 10);
-      // ✅ Cache süresi 24 saate çıkarıldı - açılışta hızlı yükleme için
-      const isCacheUsable = cacheAge < 24 * 60 * 60 * 1000; // 24 saat
+      const isCacheUsable = cacheAge < CACHE_DURATION;
 
       if (!isCacheUsable) {
         logger.debug('Cache too old', { ageMinutes: Math.round(cacheAge / 1000 / 60) }, 'CACHE');
@@ -576,10 +575,13 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         }
       } catch (err: any) {
         logger.error('❌ Live matches fetch error', { error: err.message }, 'MATCHES');
-        // Backend bağlantı hatası kontrolü (timeout dahil)
-        if (err.message?.includes('Failed to fetch') || 
-            err.message?.includes('NetworkError') || 
+        // Backend bağlantı hatası (timeout, connection reset, api'nin Türkçe mesajı dahil)
+        if (err.message?.includes('Failed to fetch') ||
+            err.message?.includes('NetworkError') ||
             err.message?.includes('ERR_CONNECTION_REFUSED') ||
+            err.message?.includes('ERR_CONNECTION_RESET') ||
+            err.message?.includes('İnternet bağlantınızı') ||
+            err.message?.includes('Backend') ||
             err.message?.includes('Backend bağlantısı') ||
             err.message?.includes('zaman aşımı') ||
             err.message?.includes('timed out') ||
@@ -620,7 +622,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
           
           if (isNationalTeam) {
             // Milli takım: Paralel olarak 3 sezonu çek
-            const nationalSeasons = [2025, 2026]; // Güncel sezon 2025-26; 2024 kullanılmıyor
+            const nationalSeasons = [2024, 2025, 2026]; // 2024: WC elemeleri/Nations League, 2025: dostluk, 2026: Nations League
             const seasonPromises = nationalSeasons.map(async (season) => {
               try {
                 const url = `/matches/team/${team.id}/season/${season}`;
@@ -648,9 +650,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
                 }
               } catch (err: any) {
                 logger.error(`❌ ${team.name} season ${season} fetch error`, { error: err.message, stack: err.stack }, 'MATCHES');
-                // Timeout hatalarını yakala
-                if (err.name === 'AbortError' || 
+                if (err.name === 'AbortError' ||
                     err.name === 'TimeoutError' ||
+                    err.message?.includes('Failed to fetch') ||
                     err.message?.includes('timed out') ||
                     err.message?.includes('timeout')) {
                   backendConnectionError = true;
@@ -679,9 +681,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
               }
             } catch (err: any) {
               logger.debug(`❌ ${team.name} season ${currentSeason} fetch error`, { error: (err as Error).message }, 'MATCHES');
-              // Timeout hatalarını yakala
-              if (err.name === 'AbortError' || 
+              if (err.name === 'AbortError' ||
                   err.name === 'TimeoutError' ||
+                  err.message?.includes('Failed to fetch') ||
                   err.message?.includes('timed out') ||
                   err.message?.includes('timeout')) {
                 backendConnectionError = true;
@@ -691,9 +693,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
           
           return teamMatches.map(m => normalizeMatchFormat(m)).filter(Boolean) as Match[];
         } catch (err: any) {
-          // Timeout ve connection hatalarını yakala
-          if (err.name === 'AbortError' || 
+          if (err.name === 'AbortError' ||
               err.name === 'TimeoutError' ||
+              err.message?.includes('Failed to fetch') ||
               err.message?.includes('ERR_CONNECTION_REFUSED') ||
               err.message?.includes('timed out') ||
               err.message?.includes('timeout') ||
@@ -811,10 +813,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         logger.info('⚠️ No favorite team matches found from API', undefined, 'MATCHES');
         fetchCompletedRef.current = true; // Cache gecikmeli uygulamasını iptal et (geri dönüş flash önlemi)
 
-        // ✅ Backend erişilemez: Cache'i ASLA silme – kullanıcı cache'teki maçları görsün
         if (backendConnectionError && successfulFetches === 0) {
-          logger.info('✅ Backend unreachable, keeping existing/cached matches (no state clear)', undefined, 'MATCHES');
-          setError(null);
+          logger.info('Backend unreachable, keeping cached matches', undefined, 'MATCHES');
+          setError('Backend bağlantısı kurulamadı. Eski veriler gösteriliyor.');
           setLoading(false);
         } else if (hasLoadedOnce) {
           logger.info('✅ Keeping cached matches (no new matches from API)', undefined, 'MATCHES');

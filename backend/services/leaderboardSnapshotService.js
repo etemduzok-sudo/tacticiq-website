@@ -9,6 +9,7 @@ require('dotenv').config();
 const { supabase } = require('../config/supabase');
 
 let snapshotTimer = null;
+let cleanupTimer = null;
 let lastDailySnapshot = null;
 let lastWeeklySnapshot = null;
 let lastMonthlySnapshot = null;
@@ -224,19 +225,17 @@ function checkAndTakeSnapshots() {
   // Günlük snapshot: Her gün 00:00 UTC
   if (currentHour === 0 && lastDailySnapshot !== currentDate) {
     lastDailySnapshot = currentDate;
-    takeSnapshot('daily');
+    takeSnapshot('daily').catch(err => console.error('❌ Daily snapshot error:', err.message));
   }
   
-  // Haftalık snapshot: Pazar günü 00:00 UTC
   if (dayOfWeek === 0 && currentHour === 0 && lastWeeklySnapshot !== currentDate) {
     lastWeeklySnapshot = currentDate;
-    takeSnapshot('weekly');
+    takeSnapshot('weekly').catch(err => console.error('❌ Weekly snapshot error:', err.message));
   }
   
-  // Aylık snapshot: Ayın 1'i 00:00 UTC
   if (dayOfMonth === 1 && currentHour === 0 && lastMonthlySnapshot !== currentDate) {
     lastMonthlySnapshot = currentDate;
-    takeSnapshot('monthly');
+    takeSnapshot('monthly').catch(err => console.error('❌ Monthly snapshot error:', err.message));
   }
 }
 
@@ -283,8 +282,9 @@ function startSnapshotService() {
   // Her dakika kontrol et
   snapshotTimer = setInterval(checkAndTakeSnapshots, 60 * 1000);
   
-  // Her gün temizlik yap
-  setInterval(cleanupOldSnapshots, 24 * 60 * 60 * 1000);
+  cleanupTimer = setInterval(() => {
+    cleanupOldSnapshots().catch(err => console.error('❌ Snapshot cleanup error:', err.message));
+  }, 24 * 60 * 60 * 1000);
   
   // İlk kontrolü hemen yap
   checkAndTakeSnapshots();
@@ -294,8 +294,12 @@ function stopSnapshotService() {
   if (snapshotTimer) {
     clearInterval(snapshotTimer);
     snapshotTimer = null;
-    console.log('⏹️ Snapshot service stopped');
   }
+  if (cleanupTimer) {
+    clearInterval(cleanupTimer);
+    cleanupTimer = null;
+  }
+  console.log('⏹️ Snapshot service stopped');
 }
 
 // ============================================

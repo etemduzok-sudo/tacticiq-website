@@ -10,8 +10,8 @@ const HEALTH_POLL_MS = 15000;
 const HEALTH_TIMEOUT_MS = 10000;
 const INITIAL_DELAY_MS = 3000;
 const FAILURES_BEFORE_BANNER = 2; // 2 ardışık hata sonrası banner göster (geçici ağ sorunlarında yanlış pozitif önlenir)
-const BANNER_IDLE_HIDE_MS = 1000; // 1 sn dokunulmayınca banner gizlensin
-const BANNER_CHECK_INTERVAL_MS = 150;
+const BANNER_IDLE_HIDE_MS = 30000; // 30 sn hareketsizlik sonrası banner küçülsün
+const BANNER_CHECK_INTERVAL_MS = 1000;
 
 type BackendStatusContextValue = {
   isBackendDown: boolean;

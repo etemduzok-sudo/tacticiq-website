@@ -100,7 +100,11 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     }
     
     if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-      const networkError = new Error('İnternet bağlantınızı kontrol edin');
+      const isLocalhost = typeof API_BASE_URL === 'string' && (API_BASE_URL.includes('localhost') || API_BASE_URL.includes('127.0.0.1'));
+      const message = isLocalhost
+        ? "Backend'e ulaşılamıyor. Backend'in çalıştığından emin olun ve sayfayı yenileyin."
+        : 'İnternet bağlantınızı kontrol edin';
+      const networkError = new Error(message);
       handleNetworkError(networkError.message, {
         endpoint,
         method: options?.method || 'GET',

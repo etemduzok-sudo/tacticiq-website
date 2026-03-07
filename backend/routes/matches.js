@@ -5,6 +5,7 @@ const express = require('express');
 const router = express.Router();
 const footballApi = require('../services/footballApi');
 const databaseService = require('../services/databaseService');
+const { resolveTeamName, loadStaticNameCache } = require('../services/databaseService');
 const { filterTopLeagueMatches } = require('../utils/liveMatchFilter');
 const { calculateRatingFromStats, calculatePlayerAttributesFromStats, getDefaultRatingByPosition } = require('../utils/playerRatingFromStats');
 const { getDisplayRatingsMap } = require('../utils/displayRating');
@@ -13,6 +14,11 @@ const { supabase } = require('../config/supabase');
 if (!supabase) {
   console.warn('⚠️ Supabase not configured in routes/matches.js - some features will be disabled');
 }
+
+const MOCK_MATCH_IDS = new Set([999999, 888001, 888002]);
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+function isMockMatch(id) { return MOCK_MATCH_IDS.has(Number(id)); }
+function shouldServeMock(id) { return !IS_PRODUCTION && isMockMatch(id); }
 
 // 🔥 CACHE MEKANIZMASI - API kullanımını azaltmak için
 const API_CACHE = {
@@ -35,7 +41,8 @@ function derivePlayerStats(rating, positionStr) {
   const pos = (positionStr || '').toLowerCase();
   let base = { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 };
   if (pos.includes('goalkeeper') || pos === 'gk' || pos === 'g') {
-    base = { pace: 48, shooting: 28, passing: 58, dribbling: 42, defending: 92, physical: 88 };
+    // GK: pace=Reflexes, shooting=Kicking, passing=Passing, dribbling=Handling, defending=Positioning, physical=Diving
+    base = { pace: 82, shooting: 65, passing: 68, dribbling: 78, defending: 85, physical: 80 };
   } else if (pos.includes('defender') || pos.includes('back') || /cb|lb|rb|lwb|rwb/i.test(pos)) {
     base = { pace: 72, shooting: 42, passing: 68, dribbling: 58, defending: 92, physical: 88 };
   } else if (pos.includes('midfielder') || pos.includes('mid') || /cm|cdm|cam|lm|rm|dm|am/i.test(pos)) {
@@ -120,12 +127,15 @@ async function updateMatchFromApi(fixture) {
   }
 }
 
-// Helper: Upsert team
+// Helper: Upsert team (static_teams'deki ismi tercih eder)
 async function upsertTeam(team) {
   try {
+    await loadStaticNameCache();
+    const displayName = resolveTeamName(team.id, team.name);
+    
     const teamData = {
       id: team.id,
-      name: team.name,
+      name: displayName,
       code: team.code,
       country: team.country,
       logo: null // ⚠️ TELİF HAKKI: Kulüp armaları telifli - ASLA döndürülmez (sadece renkler kullanılır)
@@ -195,10 +205,12 @@ async function updateMatchStatisticsFromApi(matchId, statistics) {
   }
 }
 
-// Helper: Get stat value
 function getStatValue(statistics, type) {
   const stat = statistics.find(s => s.type === type);
-  return stat ? (parseInt(stat.value) || 0) : 0;
+  if (!stat || stat.value == null) return 0;
+  const str = String(stat.value).replace('%', '');
+  const num = parseFloat(str);
+  return Number.isNaN(num) ? 0 : num;
 }
 
 // GET /api/matches/live - Get live matches
@@ -492,15 +504,20 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
       }
     }
     
-    // 2. TRY DATABASE ONLY – uygulama sadece DB'den veri alır, API-Football'a doğrudan gidilmez
+    // 2. DB + API ENRICHMENT – DB'den al, eksikse API'den tamamla
     if (databaseService.enabled) {
       try {
         const dbRows = await databaseService.getTeamMatches(teamId, season);
         const dbMatches = (dbRows && dbRows.length > 0)
           ? dbRows.map(dbRowToApiMatch).filter(Boolean)
           : [];
-        if (dbMatches.length > 0) {
-          console.log(`✅ Found ${dbMatches.length} matches in DATABASE`);
+
+        const nowTs = Math.floor(Date.now() / 1000);
+        const dbUpcoming = dbMatches.filter(m => m.fixture && m.fixture.timestamp > nowTs && (m.fixture.status?.short === 'NS' || m.fixture.status?.short === 'TBD'));
+        const needsApiEnrichment = dbMatches.length === 0 || dbUpcoming.length < 3;
+
+        if (dbMatches.length > 0 && !needsApiEnrichment) {
+          console.log(`✅ Found ${dbMatches.length} matches in DATABASE (${dbUpcoming.length} upcoming)`);
           API_CACHE.teamMatches.set(cacheKey, { data: dbMatches, timestamp: Date.now() });
           return res.json({
             success: true,
@@ -510,42 +527,61 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
             count: dbMatches.length
           });
         }
-        // DB boş: API fallback – sync script çalışmamışsa en azından API'den maçları göster (Türkiye 777 vb.)
-        console.log(`📭 No matches in DB for team ${teamId} season ${season}, trying API fallback...`);
+
+        // DB boş veya yaklaşan maç eksik → API'den tamamla ve DB'ye kaydet
+        const reason = dbMatches.length === 0 ? 'DB empty' : `only ${dbUpcoming.length} upcoming`;
+        console.log(`📭 Team ${teamId} season ${season}: ${reason}, fetching from API...`);
         try {
+          // 1) Season-based fetch (ana sezon maçları)
           const apiData = await footballApi.getFixturesByTeam(teamId, season);
           const apiMatches = apiData.response || [];
-          if (apiMatches.length > 0) {
-            console.log(`✅ [TEAM] API fallback: ${apiMatches.length} matches for team ${teamId} season ${season}`);
-            API_CACHE.teamMatches.set(cacheKey, { data: apiMatches, timestamp: Date.now() });
-            if (databaseService.enabled) {
-              await databaseService.upsertMatches(apiMatches).catch((err) => console.warn('Upsert after API fallback:', err.message));
+
+          // 2) "next" fetch – farklı sezon/organizasyondaki yaklaşan maçları yakala
+          //    (ör: Dünya Kupası elemeleri season=2024'te, Nations League season=2026'da)
+          let nextMatches = [];
+          try {
+            const nextData = await footballApi.getTeamUpcomingMatches(teamId, 15);
+            nextMatches = nextData.response || [];
+          } catch (_) {}
+
+          // Birleştir: DB + season API + next API (fixture.id bazlı dedup, en güncel kazanır)
+          const mergedMap = new Map();
+          for (const m of dbMatches) { if (m.fixture?.id) mergedMap.set(m.fixture.id, m); }
+          for (const m of apiMatches) { if (m.fixture?.id) mergedMap.set(m.fixture.id, m); }
+          for (const m of nextMatches) { if (m.fixture?.id) mergedMap.set(m.fixture.id, m); }
+          const merged = Array.from(mergedMap.values()).sort((a, b) => (a.fixture?.timestamp || 0) - (b.fixture?.timestamp || 0));
+
+          if (merged.length > dbMatches.length) {
+            console.log(`✅ [TEAM] Enriched team ${teamId}: DB=${dbMatches.length}, season API=${apiMatches.length}, next=${nextMatches.length} → merged=${merged.length}`);
+            // Yeni maçları DB'ye kaydet (arka planda)
+            const allApiMatches = [...apiMatches, ...nextMatches];
+            if (allApiMatches.length > 0) {
+              databaseService.upsertMatches(allApiMatches, { quiet: true, bulk: true }).catch((err) => console.warn('Upsert after API fetch:', err.message));
             }
+          }
+
+          if (merged.length > 0) {
+            API_CACHE.teamMatches.set(cacheKey, { data: merged, timestamp: Date.now() });
             return res.json({
               success: true,
-              data: apiMatches,
-              source: 'api',
+              data: merged,
+              source: dbMatches.length > 0 ? 'database+api' : 'api',
               cached: false,
-              count: apiMatches.length
+              count: merged.length
             });
           }
         } catch (apiErr) {
-          console.warn('API fallback failed for team', teamId, 'season', season, apiErr.message);
+          console.warn('API fetch failed for team', teamId, 'season', season, apiErr.message);
         }
-        return res.json({
-          success: true,
-          data: [],
-          source: 'database',
-          cached: false,
-          count: 0
-        });
+        // API de başarısız olduysa DB verisini dön (eksik de olsa)
+        if (dbMatches.length > 0) {
+          API_CACHE.teamMatches.set(cacheKey, { data: dbMatches, timestamp: Date.now() });
+          return res.json({ success: true, data: dbMatches, source: 'database', cached: true, count: dbMatches.length });
+        }
+        return res.json({ success: true, data: [], source: 'database', cached: false, count: 0 });
       } catch (dbError) {
         console.warn('Database lookup failed:', dbError.message);
-        return res.status(500).json({
-          success: false,
-          error: 'Database error',
-          data: []
-        });
+        return res.status(500).json({ success: false, error: 'Database error', data: [] });
       }
     }
     
@@ -591,8 +627,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const matchId = parseInt(id);
     
-    // 🧪 MOCK TEST: 888001 (Nottingham Forest-Fenerbahçe) ve 888002 (Real-Barça) – getMockMatches ile uyumlu
-    if (matchId === 888001 || matchId === 888002) {
+    if (shouldServeMock(matchId) && (matchId === 888001 || matchId === 888002)) {
       const now = new Date();
       const is888001 = matchId === 888001;
       return res.json({
@@ -626,8 +661,7 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // ✅ MOCK MATCH: ID 999999 için özel veri döndür (API çağrısı yapma)
-    if (matchId === 999999) {
+    if (shouldServeMock(matchId) && matchId === 999999) {
       const now = new Date();
       return res.json({
         success: true,
@@ -881,14 +915,10 @@ router.get('/:id/statistics', async (req, res) => {
       source: 'mock',
       cached: false
     });
-    if (matchId === 999999) {
-      return res.json(mockStatsPayload('Mock Home Team', 'Mock Away Team'));
-    }
-    if (matchId === 888001) {
-      return res.json(mockStatsPayload('Nottingham Forest', 'Fenerbahçe', 65, 611));
-    }
-    if (matchId === 888002) {
-      return res.json(mockStatsPayload('Mock Home', 'Mock Away', 9997, 9996));
+    if (shouldServeMock(matchId)) {
+      if (matchId === 999999) return res.json(mockStatsPayload('Mock Home Team', 'Mock Away Team'));
+      if (matchId === 888001) return res.json(mockStatsPayload('Nottingham Forest', 'Fenerbahçe', 65, 611));
+      if (matchId === 888002) return res.json(mockStatsPayload('Mock Home', 'Mock Away', 9997, 9996));
     }
 
     // Supabase yoksa sadece API veya boş dön (500 verme)
@@ -992,13 +1022,8 @@ router.get('/:id/players', async (req, res) => {
     const { id } = req.params;
     const matchId = parseInt(id, 10);
 
-    // Mock match check
-    if (matchId === 999999 || matchId === 888001 || matchId === 888002) {
-      return res.json({
-        success: true,
-        data: getMockPlayerStats(matchId),
-        source: 'mock'
-      });
+    if (shouldServeMock(matchId)) {
+      return res.json({ success: true, data: getMockPlayerStats(matchId), source: 'mock' });
     }
 
     // DB cache: match_player_stats tablosundan kontrol et
@@ -1095,14 +1120,16 @@ function transformPlayerStats(apiResponse) {
         const cards = stats.cards || {};
         const penalty = stats.penalty || {};
 
-        // Calculate derived stats (API bazen 'G', 'GK' veya 'Goalkeeper' döner)
         const posStr = String(games.position || '').toUpperCase();
         const isGoalkeeper = posStr === 'G' || posStr === 'GK' || String(games.position || '').toLowerCase().includes('goalkeeper');
-        const passAccuracy = passes.total > 0
-          ? Math.round((passes.accuracy || 0))
+
+        // API-Football /fixtures/players: passes.accuracy = isabetli pas SAYISI (count), yüzde değil!
+        const passesCompletedRaw = parseInt(passes.accuracy, 10) || 0;
+        const passesTotalRaw = parseInt(passes.total, 10) || 0;
+        const passAccuracy = passesTotalRaw > 0
+          ? Math.round((passesCompletedRaw / passesTotalRaw) * 100)
           : 0;
 
-        // Kaleci istatistikleri: API-Football farklı path'lerde dönebiliyor (goalkeeper.saves, goals.saves, saves)
         const rawSaves = stats.goalkeeper?.saves ?? stats.goals?.saves ?? stats.saves;
         const gkSaves = isGoalkeeper ? (parseInt(rawSaves, 10) || 0) : 0;
         const rawConceded = goals.conceded ?? stats.goals?.conceded;
@@ -1112,29 +1139,24 @@ function transformPlayerStats(apiResponse) {
           : 0;
 
         return {
-          // Player info
           id: player.id,
           name: player.name,
           photo: player.photo,
           number: games.number,
           position: games.position || 'MF',
 
-          // Game stats
           rating: parseFloat(games.rating) || 0,
           minutesPlayed: games.minutes || 0,
 
-          // Goals & Assists
           goals: goals.total || 0,
           assists: goals.assists || 0,
 
-          // Shots
           shots: shots.total || 0,
           shotsOnTarget: shots.on || 0,
           shotsInsideBox: 0,
 
-          // Passes
-          totalPasses: passes.total || 0,
-          passesCompleted: passes.accuracy ? Math.round((passes.total || 0) * (passes.accuracy / 100)) : 0,
+          totalPasses: passesTotalRaw,
+          passesCompleted: passesCompletedRaw,
           passAccuracy: passAccuracy,
           keyPasses: passes.key || 0,
           longPasses: 0,
@@ -1198,14 +1220,8 @@ router.get('/:id/heatmaps', async (req, res) => {
     const { id } = req.params;
     const matchId = parseInt(id, 10);
 
-    // Mock match check
-    if (matchId === 999999 || matchId === 888001 || matchId === 888002) {
-      return res.json({
-        success: true,
-        data: null,
-        message: 'Heatmap data not available for mock matches',
-        source: 'mock'
-      });
+    if (shouldServeMock(matchId)) {
+      return res.json({ success: true, data: null, message: 'Heatmap data not available for mock matches', source: 'mock' });
     }
 
     // Try to get lineup data for player positions
@@ -1766,8 +1782,7 @@ router.get('/:id/events/live', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid match ID' });
     }
 
-    // ✅ MOCK MATCH: ID 999999 – 52. dk, skor 5-4, ilk yarı 1 dk uzadı, 45+1 ev sahibi kırmızı kart
-    if (matchId === 999999) {
+    if (shouldServeMock(matchId) && matchId === 999999) {
       return res.json({
         success: true,
         status: '2H',
@@ -1892,9 +1907,9 @@ router.get('/:id/events/live', async (req, res) => {
     // ✅ Canlı maçta her zaman taze event çek (skipCache=true) – güncelleme gecikmesini önler
     const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
     const isLive = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT'].includes(matchStatus);
-    const isMockMatch = matchId === 999999; // Mock maç için API çağrısı yapma
-    const forceFreshForLive = isLive && !isMockMatch; // Canlı maçta cache atla
-    if (isLive && !isMockMatch) {
+    const isMock = shouldServeMock(matchId);
+    const forceFreshForLive = isLive && !isMock;
+    if (isLive && !isMock) {
       try {
         const [fixtureData, eventsData] = await Promise.all([
           footballApi.getFixtureDetails(matchId, skipCache || forceFreshForLive),
@@ -2188,8 +2203,7 @@ router.get('/:id/lineups', async (req, res) => {
     const matchId = parseInt(id);
     const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
     
-    // 🧪 MOCK TEST: Nottingham Forest vs Fenerbahçe (888001) ve Real vs Barça (888002) lineup
-    if (matchId === 888001) {
+    if (shouldServeMock(matchId) && matchId === 888001) {
       return res.json({
         success: true,
         data: [
@@ -2249,7 +2263,7 @@ router.get('/:id/lineups', async (req, res) => {
       });
     }
     
-    if (matchId === 888002) {
+    if (shouldServeMock(matchId) && matchId === 888002) {
       return res.json({
         success: true,
         data: [
@@ -2308,8 +2322,7 @@ router.get('/:id/lineups', async (req, res) => {
       });
     }
 
-    // ✅ MOCK MATCH: ID 999999 için özel lineup döndür
-    if (matchId === 999999) {
+    if (shouldServeMock(matchId) && matchId === 999999) {
       return res.json({
         success: true,
         data: [
@@ -2386,12 +2399,14 @@ router.get('/:id/lineups', async (req, res) => {
         }
       }
       let ratingsMap = {};
-      if (playerIds.length > 0) {
+      let powerScoresMap = {};
+      const uniqueIds = [...new Set(playerIds)];
+      if (uniqueIds.length > 0) {
         try {
           const { data: playersRows } = await supabase
             .from('players')
             .select('id, rating')
-            .in('id', [...new Set(playerIds)]);
+            .in('id', uniqueIds);
           if (playersRows) {
             ratingsMap = playersRows.reduce((acc, row) => {
               if (row.rating != null) acc[row.id] = row.rating;
@@ -2401,8 +2416,29 @@ router.get('/:id/lineups', async (req, res) => {
         } catch (e) {
           console.warn('⚠️ [Lineups] Failed to fetch ratings for cached lineups:', e.message);
         }
+        try {
+          const { data: powerRows } = await supabase
+            .from('player_power_scores')
+            .select('player_id, shooting, passing, dribbling, defense, physical, pace')
+            .in('player_id', uniqueIds);
+          if (powerRows) {
+            powerScoresMap = powerRows.reduce((acc, row) => {
+              acc[row.player_id] = {
+                shooting: Math.round(Number(row.shooting) || 70),
+                passing: Math.round(Number(row.passing) || 70),
+                dribbling: Math.round(Number(row.dribbling) || 70),
+                defending: Math.round(Number(row.defense) || 70),
+                physical: Math.round(Number(row.physical) || 70),
+                pace: Math.round(Number(row.pace) || 70),
+              };
+              return acc;
+            }, {});
+          }
+        } catch (e) {
+          // player_power_scores tablosu yoksa veya hata olursa sessizce devam et
+        }
       }
-      const displayRatingsMap = await getDisplayRatingsMap(playerIds, ratingsMap, supabase);
+      const displayRatingsMap = await getDisplayRatingsMap(uniqueIds, ratingsMap, supabase);
       const applyRating = (list) => (list || []).map((item) => {
         const p = item.player || item;
         const id = p && p.id;
@@ -2410,7 +2446,7 @@ router.get('/:id/lineups', async (req, res) => {
         const raw = dbRating != null ? dbRating : (p && (p.rating != null && p.rating !== undefined) ? p.rating : 75);
         const rating = Math.round(Number(raw)) || 75;
         const positionStr = p && (p.position || p.pos) || '';
-        const stats = derivePlayerStats(rating, positionStr);
+        const stats = (id && powerScoresMap[id]) ? powerScoresMap[id] : derivePlayerStats(rating, positionStr);
         if (item.player) {
           return { ...item, player: { ...item.player, rating, stats } };
         }
@@ -2903,4 +2939,5 @@ router.get('/favorites', async (req, res) => {
   }
 });
 
+router.clearTeamMatchesCache = () => { API_CACHE.teamMatches.clear(); };
 module.exports = router;
