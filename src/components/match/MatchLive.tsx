@@ -367,7 +367,9 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
           }
         } else {
           try {
-            const response = await api.matches.getMatchEventsLive(matchId);
+            const response = await api.matches.getMatchEventsLive(matchId, {
+              matchData: matchData?.teams ? { teams: matchData.teams } : undefined,
+            });
             if (response?.matchNotStarted) {
               setMatchNotStarted(true);
               setLiveEvents([]);

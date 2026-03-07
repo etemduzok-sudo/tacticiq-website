@@ -45,10 +45,9 @@ export const API_CONFIG = {
     anonKey: 'sb_publishable_Qjep7tf9H98yk5UBgcPtVw_x4iQUixY',
   },
   
-  // API-Football
+  // API-Football (api-sports.io) – backend .env; BJK-GS canlı denemesi için app tarafında EXPO_PUBLIC_APIFOOTBALL_KEY
   apiFootball: {
     host: 'v3.football.api-sports.io',
-    // Key is stored in backend .env
   },
   
   // Request timeout (ms)

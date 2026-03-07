@@ -9,6 +9,7 @@ import { formatDateInUserTimezoneSync } from '../utils/timezoneUtils';
 import { getApiEndpoint, API_CONFIG } from '../config/AppVersion';
 import { handleNetworkError, handleApiError } from '../utils/GlobalErrorHandler';
 import { logger, logApiCall } from '../utils/logger';
+import { isBjkGsMatch, isApiFootballBjkGsEnabled, getBjkGsLiveEvents } from './apiFootballLiveService';
 
 // Platform-specific API URL
 // In development: use localhost by default so the app works when you run the backend locally.
@@ -315,8 +316,19 @@ export const matchesApi = {
     request(`/matches/${matchId}/events${refresh ? '?refresh=1' : ''}`),
 
   // Get live events (DB + API hybrid, 15sn güncelleme) - maç başlamadıysa matchNotStarted: true
-  getMatchEventsLive: (matchId: number | string) =>
-    request(`/matches/${matchId}/events/live`),
+  // BJK–GS maçı ve EXPO_PUBLIC_APIFOOTBALL_KEY varsa Api-Football canlı kullanılır (deneme)
+  getMatchEventsLive: async (
+    matchId: number | string,
+    options?: { matchData?: { teams?: { home?: { id?: number }; away?: { id?: number } } } }
+  ) => {
+    if (options?.matchData && isBjkGsMatch(options.matchData) && isApiFootballBjkGsEnabled()) {
+      const bjkGs = await getBjkGsLiveEvents(String(matchId));
+          if (bjkGs) {
+            return { success: true, events: bjkGs.events, matchNotStarted: bjkGs.matchNotStarted ?? false };
+          }
+        }
+    return request(`/matches/${matchId}/events/live`);
+  },
 
   // Get community stats (topluluk tahmin istatistikleri)
   getCommunityStats: (matchId: number | string) =>

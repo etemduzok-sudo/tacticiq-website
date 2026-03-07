@@ -40,6 +40,7 @@ import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
 import { shortenCoachName } from '../utils/coachNameUtils';
 import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockMatchStart, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState, getMockUserTeamId, getMock1HLiveLineupArray } from '../data/mockTestData';
 import { NetworkErrorDisplay } from './NetworkErrorDisplay';
+import { isBjkGsMatch, isApiFootballBjkGsEnabled, fetchBjkGsLiveFromApiFootball } from '../services/apiFootballLiveService';
 
 interface MatchDetailProps {
   matchId: string;
@@ -576,6 +577,28 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     
     const fetchLiveData = async () => {
       try {
+        // ✅ BJK–GS maçı ve Api-Football anahtarı varsa: canlı veriyi Api-Football'dan al (sadece bu maç için deneme)
+        const currentMatchForBjkGs = liveMatchData || match;
+        if (currentMatchForBjkGs?.teams && isBjkGsMatch(currentMatchForBjkGs) && isApiFootballBjkGsEnabled()) {
+          const bjkGsData = await fetchBjkGsLiveFromApiFootball(matchId);
+          if (bjkGsData) {
+            setLiveMatchData(bjkGsData.matchData);
+            setLiveEvents(bjkGsData.events || []);
+            const [statsRes, lineupsRes] = await Promise.allSettled([
+              api.matches.getMatchStatistics(Number(matchId), true),
+              api.matches.getMatchLineups(Number(matchId), true),
+            ]);
+            if (statsRes.status === 'fulfilled' && statsRes.value?.success && statsRes.value.data != null) {
+              setLiveStatistics(statsRes.value.data);
+            }
+            if (lineupsRes.status === 'fulfilled' && lineupsRes.value?.success && lineupsRes.value.data?.length > 0) {
+              const hasStartXI = lineupsRes.value.data.some((l: any) => l.startXI && l.startXI.length >= 11);
+              if (hasStartXI) setManualLineups(lineupsRes.value.data);
+            }
+            return;
+          }
+        }
+
         // ✅ Paralel: canlı veriler + lineups (refresh ile; kadro açıklanınca hemen gelsin)
         const [matchRes, eventsRes, statsRes, lineupsRes] = await Promise.allSettled([
           api.matches.getMatchDetails(Number(matchId), true),
@@ -655,8 +678,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     // İlk çağrı hemen
     fetchLiveData();
     
-    // 75K API bütçe → her 5 saniyede bir güncelle (canlı istatistik anlık yansısın)
-    const interval = setInterval(fetchLiveData, 5000);
+    // BJK–GS + Api-Football anahtarı varsa dakikada 1 güncelle (100 hak korunsun); diğer maçlar 5 sn
+    const isBjkGsWithKey = match?.teams && isBjkGsMatch(match) && isApiFootballBjkGsEnabled();
+    const intervalMs = isBjkGsWithKey ? 60000 : 5000;
+    const interval = setInterval(fetchLiveData, intervalMs);
     
     return () => {
       console.log('⏹️ Canlı maç güncelleme döngüsü durduruldu');
@@ -875,21 +900,32 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const isMatchLive = LIVE_STATUSES_EARLY.includes(matchStatus);
   const isMatchFinished = REALLY_FINISHED_STATUSES.includes(matchStatus);
   
+  // ✅ Maç başlama düdüğü geçti mi? (API hâlâ NS dönse bile kilitlemek için – countdownTicker ile her saniye güncellenir)
+  const kickoffPassed = React.useMemo(() => {
+    if (isMockTestMatch(Number(matchId))) return false;
+    const ts = currentMatch?.fixture?.timestamp ?? match?.fixture?.timestamp;
+    if (!ts || typeof ts !== 'number') return false;
+    return Date.now() >= ts * 1000;
+  }, [matchId, currentMatch?.fixture?.timestamp, match?.fixture?.timestamp, countdownTicker]);
+  
+  // ✅ Kadro/tahmin için “canlı say” = API canlı/biten VEYA başlama saati geçmiş (düdük çalmış)
+  const isMatchLiveOrKickoffPassed = isMatchLive || kickoffPassed;
+  
   // ✅ DEBUG: Maç statüsünü konsola yazdır
   React.useEffect(() => {
     console.log(`📊 [MatchDetail] Maç ${matchId} statüsü:`, {
       matchStatus,
       isMatchLive,
       isMatchFinished,
+      kickoffPassed,
       hasPrediction,
       apiStatus: match?.fixture?.status,
       timestamp: match?.fixture?.timestamp,
     });
-  }, [matchId, matchStatus, isMatchLive, isMatchFinished, hasPrediction, match?.fixture?.status, match?.fixture?.timestamp]);
+  }, [matchId, matchStatus, isMatchLive, isMatchFinished, kickoffPassed, hasPrediction, match?.fixture?.status, match?.fixture?.timestamp]);
   
-  // ✅ YENİ KURAL: Kadro kilitli mi? (maç başladığında kilitlenir, 120 sn kuralı kaldırıldı)
-  // Maç canlı veya bitmişse kadro düzenlenemez
-  const isKadroLocked = isMatchLive || isMatchFinished;
+  // ✅ YENİ KURAL: Kadro kilitli mi? Maç başlama düdüğü ile birlikte kilitlenir (canlı/biten veya kickoff geçmiş)
+  const isKadroLocked = isMatchLive || isMatchFinished || kickoffPassed;
   
   // ✅ Maç bittiğinde popup göster
   React.useEffect(() => {
@@ -1317,7 +1353,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             }}
             isVisible={activeTab === 'squad'}
             isMatchFinished={isMatchFinished}
-            isMatchLive={isMatchLive}
+            isMatchLive={isMatchLiveOrKickoffPassed}
             onHasUnsavedChanges={handleSquadUnsavedChanges}
             startingXIPopupShown={startingXIPopupShown}
             onStartingXIPopupShown={() => setStartingXIPopupShown(true)}
@@ -1343,7 +1379,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             matchData={matchData}
             matchId={matchId}
             predictionTeamId={predictionTeamIdForProps}
-            isMatchLive={isMatchLive}
+            isMatchLive={isMatchLiveOrKickoffPassed}
             isMatchFinished={isMatchFinished}
             hasPrediction={hasPrediction === true}
             initialAnalysisFocus={effectiveAnalysisFocus}
