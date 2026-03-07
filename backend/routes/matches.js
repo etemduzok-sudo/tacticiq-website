@@ -10,6 +10,7 @@ const { filterTopLeagueMatches } = require('../utils/liveMatchFilter');
 const { calculateRatingFromStats, calculatePlayerAttributesFromStats, getDefaultRatingByPosition } = require('../utils/playerRatingFromStats');
 const { getDisplayRatingsMap } = require('../utils/displayRating');
 const { supabase } = require('../config/supabase');
+const apiUsageTracker = require('../services/apiUsageTracker');
 
 if (!supabase) {
   console.warn('⚠️ Supabase not configured in routes/matches.js - some features will be disabled');
@@ -242,10 +243,15 @@ router.get('/live', async (req, res) => {
       .order('fixture_date', { ascending: true });
 
     // 3. If API key exists, try to get fresh data (ONLY if cache expired)
-    // ✅ AKTİF: Canlı maç verileri için API çağrısı yapılıyor
+    // ✅ Maç sync kotası (25K/gün) – aşılıyorsa API çağırma, DB/cache ile dön
     if (process.env.API_FOOTBALL_KEY || process.env.FOOTBALL_API_KEY) {
       try {
+        if (!apiUsageTracker.canMakeMatchSyncCall()) {
+          console.log('⚠️ [LIVE] Maç sync kotası dolu (%101+), API çağrılmıyor – DB/cache kullanılıyor');
+          // Aşağıda finalMatches DB'den zaten dolu; cache/response aynı kalır
+        } else {
         console.log('🌐 [LIVE] Fetching from API-FOOTBALL (cache expired)');
+        apiUsageTracker.incrementMatchSync(1);
         const data = await footballApi.getLiveMatches();
         
         // 🔥 DEDUPLİKASYON: fixture.id bazında tekil maçlar
@@ -343,6 +349,7 @@ router.get('/live', async (req, res) => {
           source: 'api',
           cached: false,
         });
+        } // else (kota yeterliyse API çağrıldı)
       } catch (apiError) {
         console.error('API error:', apiError);
         // Continue to fallback
@@ -2705,8 +2712,12 @@ router.get('/:id/lineups', async (req, res) => {
           // ✅ Rating'i clamp et: minimum 65, maximum 95 (FIFA benzeri)
           let finalRating = Math.round(Number(calculatedRating)) || getDefaultRatingByPosition(positionStr);
           if (finalRating < 65) {
-            console.warn(`⚠️ Rating too low for player ${playerId}: ${finalRating}, clamping to 65`);
-            finalRating = 65;
+            console.warn(`⚠️ Rating too low for player ${playerId}: ${finalRating}, using position default`);
+            finalRating = getDefaultRatingByPosition(positionStr);
+          }
+          if (finalRating === 65 && positionStr) {
+            // 65 çoğu zaman "veri yok" anlamına geliyor; yıldız oyuncular 65 göstermesin
+            finalRating = getDefaultRatingByPosition(positionStr);
           }
           if (finalRating > 95) {
             finalRating = 95;
@@ -2718,7 +2729,7 @@ router.get('/:id/lineups', async (req, res) => {
           let stats = statsFromApi;
           if (!stats) {
             stats = derivePlayerStats(finalRating, positionStr);
-            // Eğer rating çok düşükse (65-70), stats'ları pozisyona göre minimum değerlere ayarla
+            // Eğer rating çok düşükse (70 altı), stats'ları pozisyona göre minimum değerlere ayarla
             if (finalRating < 70) {
               const pos = (positionStr || '').toLowerCase();
               if (pos.includes('goalkeeper') || pos === 'gk' || pos === 'g') {

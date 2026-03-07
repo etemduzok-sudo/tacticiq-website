@@ -480,7 +480,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
             age: player.age || 25,
             nationality: player.nationality || 'Unknown',
             grid: player.grid,
-            stats: player.stats || { pace: 65, shooting: 65, passing: 65, dribbling: 65, defending: 65, physical: 65 } // ✅ Backend'den gelen stats varsa kullan
+            stats: player.stats || { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 } // ✅ Backend'den gelen yoksa varsayılan (65 yerine 70 – yıldız oyuncular hep 65 görünmesin)
           });
         });
       }

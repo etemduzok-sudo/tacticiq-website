@@ -13,7 +13,7 @@ const apiUsageTracker = require('./apiUsageTracker');
 // CONFIGURATION
 // ============================================
 
-const POLLING_INTERVAL = 5000; // 5 seconds - PRO plan: 75K/day, tek /live call tüm maçları döner
+const POLLING_INTERVAL = 30000; // 30 sn — tek /live call tüm maçları döner, günde max ~2880 çağrı
 const FINALIZATION_DELAY = 60000; // 1 minute after match ends
 
 let pollingTimer = null;
@@ -271,14 +271,18 @@ async function pollLiveMatches() {
       isPolling = false;
       return;
     }
-    // ✅ 0. STALE NS MAÇLARI KONTROL ET (zamanı geçmiş ama hala NS)
-    const staleMatches = await getStaleNsMatches();
-    if (staleMatches.length > 0) {
-      console.log(`🔍 Checking ${staleMatches.length} stale NS matches by fixture ID...`);
-      for (const staleMatch of staleMatches) {
-        await refreshMatchByFixtureId(staleMatch.id);
-        // Rate limit: Her istek arasında 200ms bekle
-        await new Promise(resolve => setTimeout(resolve, 200));
+    // Stale NS kontrolü: Her 5 dk'da bir, max 2 maç (günde ~576 çağrı tasarruf)
+    if (!pollLiveMatches._lastStaleCheck || Date.now() - pollLiveMatches._lastStaleCheck > 5 * 60 * 1000) {
+      pollLiveMatches._lastStaleCheck = Date.now();
+      const staleMatches = await getStaleNsMatches();
+      if (staleMatches.length > 0 && apiUsageTracker.getMatchSyncRemaining() >= 100) {
+        const maxStale = Math.min(2, staleMatches.length);
+        for (let i = 0; i < maxStale; i++) {
+          if (!apiUsageTracker.canMakeMatchSyncCall()) break;
+          await refreshMatchByFixtureId(staleMatches[i].id);
+          apiUsageTracker.incrementMatchSync(1);
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
       }
     }
     

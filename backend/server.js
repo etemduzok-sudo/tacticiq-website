@@ -881,7 +881,7 @@ app.listen(PORT, '0.0.0.0', () => {
       try {
         const smartSyncService = require('./services/smartSyncService');
         smartSyncService.startSync();
-        console.log(`🌍 Worldwide sync started (fixed 12s interval)`);
+        console.log(`📅 Scheduled sync started (today 5dk, future 30dk)`);
       } catch (error) {
         console.error('❌ Failed to start smart sync service:', error.message);
       }
@@ -957,7 +957,7 @@ app.listen(PORT, '0.0.0.0', () => {
       try {
         const liveMatchService = require('./services/liveMatchService');
         liveMatchService.startPolling();
-        console.log(`🔴 Live match polling started (15s interval)`);
+        console.log(`🔴 Live match polling started (30s interval)`);
       } catch (error) {
         console.error('❌ Failed to start live match polling:', error.message);
       }

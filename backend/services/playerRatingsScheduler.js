@@ -54,7 +54,7 @@ const weeklyFullUpdate = cron.schedule('0 0 * * 1', async () => {
 });
 
 /**
- * Günlük öncelikli lig güncellemesi (Süper Lig + Top 5)
+ * Günlük öncelikli lig güncellemesi (API kullanmadan – pozisyon varsayılanı)
  * Her gün 04:00 Türkiye saati
  */
 const dailyPriorityUpdate = cron.schedule('0 1 * * *', async () => {
@@ -63,11 +63,10 @@ const dailyPriorityUpdate = cron.schedule('0 1 * * *', async () => {
     return;
   }
   
-  console.log('🌅 Günlük öncelikli güncelleme başladı (DB-FIRST)...');
+  console.log('🌅 Günlük öncelikli güncelleme başladı (DB-FIRST, API yok)...');
   isRunning = true;
   
   try {
-    // DB'den tüm takımları işle (lig ayrımı yok - hepsi DB'de)
     lastRunStats = await processAllTeamsFromDB(false, CURRENT_SEASON);
     lastRunTime = new Date();
     console.log('✅ Günlük güncelleme tamamlandı');
@@ -82,15 +81,44 @@ const dailyPriorityUpdate = cron.schedule('0 1 * * *', async () => {
 });
 
 /**
+ * Haftalık API'li rating güncellemesi (API hakkı kullanır – gerçek istatistik + game rating)
+ * Her Pazar 05:00 Türkiye saati (02:00 UTC) – yarın da çalışır, API kotası burada harcanır
+ */
+const weeklyApiRatingUpdate = cron.schedule('0 2 * * 0', async () => {
+  if (isRunning) {
+    console.log('⚠️ Önceki güncelleme hala çalışıyor, API güncellemesi atlanıyor...');
+    return;
+  }
+  
+  console.log('📡 Haftalık API\'li rating güncellemesi başladı (istatistik + game rating)...');
+  isRunning = true;
+  
+  try {
+    lastRunStats = await processAllTeamsFromDB(true, CURRENT_SEASON);
+    lastRunTime = new Date();
+    console.log('✅ API\'li rating güncellemesi tamamlandı', lastRunStats?.apiCalls ? `(${lastRunStats.apiCalls} API çağrısı)` : '');
+  } catch (error) {
+    console.error('❌ API\'li rating güncellemesi hatası:', error);
+  } finally {
+    isRunning = false;
+  }
+}, {
+  scheduled: true,
+  timezone: 'Europe/Istanbul',
+});
+
+/**
  * Scheduler'ı başlat
  */
 function startScheduler() {
   console.log('⏰ Oyuncu Rating Scheduler başlatılıyor...');
-  console.log('   📅 Haftalık tam güncelleme: Her Pazartesi 03:00');
-  console.log('   🌅 Günlük öncelikli güncelleme: Her gün 04:00');
+  console.log('   📅 Haftalık (API yok): Her Pazartesi 00:00 UTC');
+  console.log('   🌅 Günlük (API yok): Her gün 04:00 TR');
+  console.log('   📡 Haftalık API\'li rating: Her Pazar 05:00 TR (API hakkı kullanılır)');
   
   weeklyFullUpdate.start();
   dailyPriorityUpdate.start();
+  weeklyApiRatingUpdate.start();
   
   console.log('✅ Scheduler aktif');
 }
@@ -101,6 +129,7 @@ function startScheduler() {
 function stopScheduler() {
   weeklyFullUpdate.stop();
   dailyPriorityUpdate.stop();
+  weeklyApiRatingUpdate.stop();
   console.log('⏹️ Scheduler durduruldu');
 }
 
@@ -145,4 +174,5 @@ module.exports = {
   getSchedulerStatus,
   weeklyFullUpdate,
   dailyPriorityUpdate,
+  weeklyApiRatingUpdate,
 };

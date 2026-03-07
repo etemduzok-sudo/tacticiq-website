@@ -505,13 +505,16 @@ const LEAGUE_COMPETITIONS: Record<string, string[]> = {
   'Premyer Liqa': ['Premyer Liqa', 'Azərbaycan Kuboku'],
 };
 
-/** Takım ID'sine göre ek Avrupa/uluslararası yarışmalar (Şampiyonlar Ligi, Avrupa Ligi vb.) */
+/**
+ * Takım ID'sine göre ek Avrupa/uluslararası yarışmalar.
+ * Sadece takımın halen mücadele ettiği (elenmediği) turnuvalar listelenmeli.
+ * Elenen takımlar burada olmamalı (örn. CL elemelerinden/AVR Ligi'nden elenenler).
+ */
 const TEAM_EXTRA_COMPETITIONS: Record<number, string[]> = {
-  645: ['Şampiyonlar Ligi'],   // Galatasaray
-  611: ['Şampiyonlar Ligi'],   // Fenerbahçe
-  549: ['Avrupa Ligi'],        // Beşiktaş
-  998: ['Konferans Ligi'],     // Trabzonspor
-  564: ['Avrupa Ligi'],       // Başakşehir (örnek)
+  645: ['Şampiyonlar Ligi'],   // Galatasaray (CL grup aşamasında)
+  // 611 Fenerbahçe: CL elemelerinden elendi, Avrupa Ligi'nden de elendi → listelenmiyor
+  // 549 Beşiktaş: Avrupa kupalarından elendi → listelenmiyor
+  998: ['Konferans Ligi'],     // Trabzonspor (devam ediyorsa güncel tutulmalı)
   50: ['Şampiyonlar Ligi'],   // Manchester City
   40: ['Şampiyonlar Ligi'],   // Liverpool
   33: ['Avrupa Ligi'],        // Manchester United

@@ -84,7 +84,8 @@ function buildEnhancedPlayers(players, dbPlayersMap, injuriesMap = {}) {
   const { getDefaultRatingByPosition } = require('../utils/playerRatingFromStats');
   return players.map((player) => {
     const dbPlayer = dbPlayersMap[player.id];
-    const rating = (dbPlayer && dbPlayer.rating) ? dbPlayer.rating : getDefaultRatingByPosition(player.position);
+    let rating = (dbPlayer && dbPlayer.rating) ? dbPlayer.rating : getDefaultRatingByPosition(player.position);
+    if (rating === 65 && (player.position || player.pos)) rating = getDefaultRatingByPosition(player.position || player.pos);
     const injuryInfo = injuriesMap[player.id] || {};
     const injured = !!injuryInfo.injured;
     const suspended = !!injuryInfo.suspended;

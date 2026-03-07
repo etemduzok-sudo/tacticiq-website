@@ -8,11 +8,19 @@ const https = require('https');
 const http = require('http');
 
 const API_USAGE_SERVER_FILE = path.join(__dirname, '..', 'data', 'api-usage-from-server.json');
+const isDev = process.env.NODE_ENV !== 'production';
+let lastWriteAt = 0;
+const WRITE_THROTTLE_MS = 60000; // En fazla 1 dakikada bir dosyaya yaz (nodemon restart riski)
+
 function writeServerUsage(limit, remaining) {
+  if (isDev) return; // Geliştirme ortamında dosyaya yazma → nodemon restart tetiklemez
   try {
     const limitNum = parseInt(limit, 10) || 75000;
     const remainingNum = parseInt(remaining, 10);
     if (isNaN(remainingNum)) return;
+    const now = Date.now();
+    if (now - lastWriteAt < WRITE_THROTTLE_MS) return;
+    lastWriteAt = now;
     const dataDir = path.dirname(API_USAGE_SERVER_FILE);
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(API_USAGE_SERVER_FILE, JSON.stringify({

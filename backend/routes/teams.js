@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const footballApi = require('../services/footballApi');
-const { calculateRatingFromStats } = require('../utils/playerRatingFromStats');
+const { calculateRatingFromStats, getDefaultRatingByPosition } = require('../utils/playerRatingFromStats');
 const { getDisplayRatingsMap } = require('../utils/displayRating');
 const { supabase } = require('../config/supabase');
 
@@ -468,10 +468,11 @@ router.get('/:id/squad', async (req, res) => {
             const playerIds = newRow.players.map((p) => p.id).filter(Boolean);
             const apiMap = newRow.players.reduce((acc, p) => { acc[p.id] = p.rating; return acc; }, {});
             const displayMap = await getDisplayRatingsMap(playerIds, apiMap, supabase);
-            const playersWithDisplayRating = newRow.players.map((p) => ({
-              ...p,
-              rating: displayMap.get(p.id) ?? p.rating,
-            }));
+            const playersWithDisplayRating = newRow.players.map((p) => {
+              let r = displayMap.get(p.id) ?? p.rating;
+              if (r === 65 && (p.position || p.pos)) r = getDefaultRatingByPosition(p.position || p.pos);
+              return { ...p, rating: r };
+            });
             return res.json({
               success: true,
               data: {
@@ -503,10 +504,11 @@ router.get('/:id/squad', async (req, res) => {
     const playerIds = players.map((p) => p.id).filter(Boolean);
     const apiMap = players.reduce((acc, p) => { acc[p.id] = p.rating; return acc; }, {});
     const displayMap = await getDisplayRatingsMap(playerIds, apiMap, supabase);
-    const playersWithDisplayRating = players.map((p) => ({
-      ...p,
-      rating: displayMap.get(p.id) ?? p.rating,
-    }));
+    const playersWithDisplayRating = players.map((p) => {
+      let r = displayMap.get(p.id) ?? p.rating;
+      if (r === 65 && (p.position || p.pos)) r = getDefaultRatingByPosition(p.position || p.pos);
+      return { ...p, rating: r };
+    });
 
     res.json({
       success: true,

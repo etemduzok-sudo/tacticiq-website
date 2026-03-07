@@ -1,311 +1,96 @@
 // ============================================
-// SMART SYNC SERVICE (Fixed 12s Interval)
+// SMART SYNC SERVICE – Zamanlanmış Veri Senkronu
 // ============================================
-// Dünya yuvarlak - her an bir yerde maç var!
-// SABİT 12 saniyede bir tüm dünyadan maçları çek
-// Günlük: 7,200 API çağrısı (%96 kullanım)
+// GÖREV: Bugünün, yarının ve öbür günün maç programını DB'ye kaydetmek.
+// CANLI MAÇ ÇAĞIRMAZ — o iş sadece liveMatchService'e ait.
 // ============================================
 
-const { supabase } = require('../config/supabase');
 const footballApi = require('./footballApi');
 const databaseService = require('./databaseService');
 const apiUsageTracker = require('./apiUsageTracker');
 
-// Timeline service - maç akışını kaydet
 let timelineService;
-try {
-  timelineService = require('./timelineService');
-} catch (error) {
-  console.warn('⚠️ Timeline service not available:', error.message);
-  timelineService = null;
-}
+try { timelineService = require('./timelineService'); } catch { timelineService = null; }
 
-if (!supabase) {
-  console.warn('⚠️ Supabase not configured in smartSyncService.js - sync will be disabled');
-}
+// Her 5 dakikada bir bugünün maçlarını güncelle, her 30 dakikada yarın/öbürgün
+const TODAY_INTERVAL = 5 * 60 * 1000;
+const FUTURE_INTERVAL = 30 * 60 * 1000;
 
-// ============================================
-// CONFIGURATION - SABİT 12 SANİYE
-// ============================================
-// Dünya genelinde her an maç oynanıyor:
-// - Avrupa: 14:00-23:00 UTC
-// - Amerika: 00:00-06:00 UTC  
-// - Asya: 06:00-14:00 UTC
-// Bu yüzden adaptif interval YANLIŞ!
-// PRO Plan: 75,000 calls/day
-// Canlı maç varken: 5s interval (~17,280 calls/day)
-// Canlı maç yokken: 30s interval (~2,880 calls/day)
-// ============================================
+let todayTimer = null;
+let futureTimer = null;
 
-const FIXED_INTERVAL = 12000; // 12 saniye
-const LIVE_MATCH_INTERVAL = 5000;
-const IDLE_INTERVAL = 30000;
-// Maç sync kotası: 25K/gün (50K = rating, takım, koç, kadro)
-const DAILY_API_LIMIT = apiUsageTracker.MATCH_SYNC_LIMIT;
-const SAFE_DAILY_LIMIT = Math.floor(DAILY_API_LIMIT * 0.95); // %95'te yavaşla
-
-let syncTimer = null;
-let currentInterval = FIXED_INTERVAL; // SABİT 12s
-let apiCallsToday = 0;
-let apiCallsThisHour = 0;
-let lastHourReset = new Date().getUTCHours();
-let lastDayReset = new Date().getUTCDate();
-
-// ============================================
-// API RATE TRACKING
-// ============================================
-
-function trackApiCall() {
-  const now = new Date();
-  const currentHour = now.getUTCHours();
-  const currentDay = now.getUTCDate();
-  if (currentDay !== lastDayReset) {
-    apiCallsToday = 0;
-    lastDayReset = currentDay;
-    console.log('📊 [MAÇ SYNC] Günlük sayaç sıfırlandı');
-  }
-  if (currentHour !== lastHourReset) {
-    apiCallsThisHour = 0;
-    lastHourReset = currentHour;
-  }
-  apiCallsToday++;
-  apiCallsThisHour++;
-  apiUsageTracker.incrementMatchSync(1);
-}
-
-function canMakeApiCall() {
-  if (!apiUsageTracker.canMakeMatchSyncCall()) {
-    console.log(`🛑 [MAÇ SYNC] Günlük limit (${DAILY_API_LIMIT}) doldu`);
-    return false;
-  }
-  if (apiCallsToday >= SAFE_DAILY_LIMIT) {
-    console.log(`⚠️ [MAÇ SYNC] Limite yaklaşıldı (${apiCallsToday}/${SAFE_DAILY_LIMIT}), yavaşlıyor...`);
-    return false;
-  }
-  return true;
-}
-
-function getRemainingCalls() {
-  const remaining = DAILY_API_LIMIT - apiCallsToday;
-  const usagePercent = ((apiCallsToday / DAILY_API_LIMIT) * 100).toFixed(1);
-  
-  return {
-    daily: remaining,
-    used: apiCallsToday,
-    limit: DAILY_API_LIMIT,
-    usagePercent: usagePercent + '%'
-  };
-}
-
-// ============================================
-// SABİT INTERVAL (Adaptive değil!)
-// ============================================
-// Dünya yuvarlak - gece/gündüz ayrımı mantıksız
-// Her zaman SABİT 12 saniye kullan
-// ============================================
-
-async function calculateOptimalInterval() {
-  const remaining = getRemainingCalls();
-  
-  // EMERGENCY: Günlük limit doluyorsa yavaşla
-  if (apiCallsToday >= SAFE_DAILY_LIMIT) {
-    return {
-      interval: 120000, // 2 dakika (emergency)
-      reason: {
-        message: 'Emergency throttle - daily limit approaching',
-        apiUsage: remaining,
-      }
-    };
-  }
-  
-  // Normal: SABİT 12 saniye
-  return {
-    interval: FIXED_INTERVAL,
-    reason: {
-      message: 'Fixed 12s interval - worldwide coverage',
-      apiUsage: remaining,
-    }
-  };
-}
-
-// ============================================
-// SMART FETCH STRATEGY (SABİT 12s)
-// ============================================
-
-async function smartFetch() {
-  if (!canMakeApiCall()) {
-    const remaining = getRemainingCalls();
-    console.log(`⚠️ API limit reached! Daily: ${remaining.daily}`);
-    return;
-  }
-  
+async function syncTodayMatches() {
+  if (!apiUsageTracker.canMakeMatchSyncCall()) return;
   try {
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    
-    // ============================================
-    // 1. CANLI MAÇLAR (Her 12 saniyede)
-    // ============================================
-    const liveResponse = await footballApi.getLiveMatches();
-    trackApiCall();
-    
-    if (liveResponse.response && liveResponse.response.length > 0) {
-      // Maçları DB'ye kaydet
-      await databaseService.upsertMatches(liveResponse.response);
-      
-      // Timeline'a eventleri kaydet (goller, kartlar, vs.)
-      if (timelineService) {
-        try {
-          await timelineService.processLiveMatches(liveResponse.response);
-        } catch (err) {
-          console.error('❌ Timeline process error:', err.message);
-        }
-      }
-      
-      console.log(`🔴 Updated ${liveResponse.response.length} live matches`);
+    const today = new Date().toISOString().split('T')[0];
+    const resp = await footballApi.getFixturesByDate(today);
+    apiUsageTracker.incrementMatchSync(1);
+    if (resp.response && resp.response.length > 0) {
+      await databaseService.upsertMatches(resp.response);
+      console.log(`📅 [SYNC] Bugünün maçları güncellendi: ${resp.response.length}`);
     }
-    
-    // ============================================
-    // 2. BUGÜNÜN MAÇLARI (Her 5 dakikada bir)
-    // ============================================
-    // Her 12 saniyede bugünün maçlarını çekmek gereksiz
-    // 25 fetch'te 1 kez (25 x 12s = 5 dakika)
-    if (apiCallsToday % 25 === 0 && canMakeApiCall()) {
-      const todayResponse = await footballApi.getFixturesByDate(today);
-      trackApiCall();
-      
-      if (todayResponse.response && todayResponse.response.length > 0) {
-        await databaseService.upsertMatches(todayResponse.response);
-        console.log(`📅 Updated ${todayResponse.response.length} matches for today`);
-      }
-    }
-    
-    // ============================================
-    // 3. YARIN VE ÖBÜR GÜN (Her 30 dakikada bir)
-    // ============================================
-    // 150 fetch'te 1 kez (150 x 12s = 30 dakika)
-    if (apiCallsToday % 150 === 0) {
-      for (let i = 1; i <= 2 && canMakeApiCall(); i++) {
-        const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + i);
-        const dateStr = futureDate.toISOString().split('T')[0];
-        
-        const futureResponse = await footballApi.getFixturesByDate(dateStr);
-        trackApiCall();
-        
-        if (futureResponse.response && futureResponse.response.length > 0) {
-          await databaseService.upsertMatches(futureResponse.response);
-          console.log(`📆 Updated ${futureResponse.response.length} matches for ${dateStr}`);
-        }
-      }
-    }
-    
-    // ============================================
-    // 4. INTERVAL KONTROLÜ (Emergency durumu için)
-    // ============================================
-    const { interval, reason } = await calculateOptimalInterval();
-    if (interval !== currentInterval) {
-      currentInterval = interval;
-      console.log(`⚙️ Interval changed to ${interval / 1000}s:`, reason.message);
-      restartSync();
-    }
-    
-  } catch (error) {
-    console.error('❌ Smart fetch error:', error.message);
+  } catch (err) {
+    console.error('❌ [SYNC] Bugün maç güncelleme hatası:', err.message);
   }
 }
 
-// ============================================
-// SYNC CONTROL
-// ============================================
+async function syncFutureMatches() {
+  if (!apiUsageTracker.canMakeMatchSyncCall()) return;
+  try {
+    for (let i = 1; i <= 2; i++) {
+      if (!apiUsageTracker.canMakeMatchSyncCall()) break;
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      const resp = await footballApi.getFixturesByDate(dateStr);
+      apiUsageTracker.incrementMatchSync(1);
+      if (resp.response && resp.response.length > 0) {
+        await databaseService.upsertMatches(resp.response);
+        console.log(`📆 [SYNC] ${dateStr} maçları güncellendi: ${resp.response.length}`);
+      }
+      await new Promise(r => setTimeout(r, 500));
+    }
+  } catch (err) {
+    console.error('❌ [SYNC] Gelecek maç güncelleme hatası:', err.message);
+  }
+}
 
 function startSync() {
-  if (syncTimer) {
-    console.log('⚠️ Smart sync already running');
-    return;
-  }
-  
-  const now = new Date();
-  const currentHourUTC = now.getUTCHours();
-  
+  if (todayTimer) { console.log('⚠️ Smart sync already running'); return; }
+
   console.log('\n╔════════════════════════════════════════════════════════╗');
-  console.log('║       🌍 WORLDWIDE SYNC SERVICE STARTED 🌍             ║');
+  console.log('║       📅 SCHEDULED SYNC SERVICE STARTED                ║');
   console.log('╠════════════════════════════════════════════════════════╣');
-  console.log(`║ Strategy: FIXED 12s Interval (Worldwide)               ║`);
-  console.log(`║                                                        ║`);
-  console.log(`║ 🌎 Americas (00-06 UTC) → MLS, Copa Libertadores       ║`);
-  console.log(`║ 🌏 Asia (06-14 UTC)     → J-League, K-League, A-League ║`);
-  console.log(`║ 🌍 Europe (14-23 UTC)   → Premier, LaLiga, Bundesliga  ║`);
-  console.log(`║                                                        ║`);
-  console.log(`║ Interval: ${FIXED_INTERVAL / 1000}s (fixed, no adaptive)                    ║`);
-  console.log('╠════════════════════════════════════════════════════════╣');
-  console.log(`║ Daily API Limit: ${DAILY_API_LIMIT} calls                           ║`);
-  console.log(`║ Expected Usage: ${SAFE_DAILY_LIMIT} calls/day (%96)               ║`);
-  console.log(`║ Timeline Service: ${timelineService ? '✅ Active' : '❌ Disabled'}                          ║`);
-  console.log(`║ Current UTC Time: ${String(currentHourUTC).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}                                    ║`);
+  console.log('║ Bugünün maçları: 5 dk\'da bir (1 API/run = 288/gün)    ║');
+  console.log('║ Yarın+öbürgün: 30 dk\'da bir (2 API/run = 96/gün)     ║');
+  console.log('║ Canlı maçlar: BU SERVİS ÇAĞIRMAZ (liveMatchService)  ║');
   console.log('╚════════════════════════════════════════════════════════╝\n');
-  
-  // Run immediately - Wrap in try-catch
-  try {
-    smartFetch().catch((error) => {
-      console.error('❌ [SMART SYNC] Error in initial smartFetch:', error.message);
-      console.error('Stack:', error.stack);
-      // Continue - don't crash
-    });
-  } catch (error) {
-    console.error('❌ [SMART SYNC] Error starting smartFetch:', error.message);
-    console.error('Stack:', error.stack);
-    // Continue - don't crash
-  }
-  
-  // Then run on interval - Wrap in try-catch
-  syncTimer = setInterval(() => {
-    try {
-      smartFetch().catch((error) => {
-        console.error('❌ [SMART SYNC] Error in smartFetch interval:', error.message);
-        console.error('Stack:', error.stack);
-        // Continue - don't crash
-      });
-    } catch (error) {
-      console.error('❌ [SMART SYNC] Error in smartFetch interval wrapper:', error.message);
-      console.error('Stack:', error.stack);
-      // Continue - don't crash
-    }
-  }, currentInterval);
+
+  syncTodayMatches().catch(e => console.error('❌ [SYNC] Initial today error:', e.message));
+  syncFutureMatches().catch(e => console.error('❌ [SYNC] Initial future error:', e.message));
+
+  todayTimer = setInterval(() => {
+    syncTodayMatches().catch(e => console.error('❌ [SYNC] today error:', e.message));
+  }, TODAY_INTERVAL);
+
+  futureTimer = setInterval(() => {
+    syncFutureMatches().catch(e => console.error('❌ [SYNC] future error:', e.message));
+  }, FUTURE_INTERVAL);
 }
 
 function stopSync() {
-  if (syncTimer) {
-    clearInterval(syncTimer);
-    syncTimer = null;
-    console.log('⏹️ Smart sync stopped');
-  }
-}
-
-function restartSync() {
-  stopSync();
-  syncTimer = setInterval(() => {
-    smartFetch().catch(err => console.error('❌ [SMART SYNC] Error in smartFetch:', err.message));
-  }, currentInterval);
+  if (todayTimer) { clearInterval(todayTimer); todayTimer = null; }
+  if (futureTimer) { clearInterval(futureTimer); futureTimer = null; }
+  console.log('⏹️ Scheduled sync stopped');
 }
 
 function getStatus() {
   return {
-    isRunning: syncTimer !== null,
-    currentInterval: currentInterval / 1000 + 's',
-    apiCallsToday,
-    apiCallsThisHour,
-    remaining: getRemainingCalls()
+    isRunning: todayTimer !== null,
+    todayInterval: TODAY_INTERVAL / 1000 + 's',
+    futureInterval: FUTURE_INTERVAL / 1000 + 's',
+    quota: apiUsageTracker.getStatus(),
   };
 }
 
-// ============================================
-// EXPORTS
-// ============================================
-
-module.exports = {
-  startSync,
-  stopSync,
-  getStatus,
-  smartFetch
-};
+module.exports = { startSync, stopSync, getStatus };

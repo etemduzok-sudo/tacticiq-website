@@ -390,16 +390,13 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       currentCount: currentIds.length
     }, 'MATCHES');
     
-    // ✅ Yeni takım eklendiyse: Ref'i güncelle, cache'i temizle ve TÜM maçları yeniden fetch et.
-    // Listeyi temizleme – mevcut maçlar ekranda kalsın, fetch bitince güncellenir (kaybolma/yanıp sönme önlenir).
+    // ✅ Yeni takım eklendiyse: Ref'i güncelle, ana effect yeniden fetch edecek.
+    // Cache temizlenmiyor → mevcut maçlar ekranda kalır; fetch bitince yeni takımların maçları eklenir.
+    // fetchMatches() burada çağrılmıyor → ana effect (favoriteTeamIdsString) zaten tetiklenecek,
+    // böylece backend'e çift istek gitmez ve timeout riski azalır.
     if (addedTeamIds.length > 0) {
-      logger.info('🆕 New teams added, fetching all matches (keeping current list visible)...', { addedTeams: addedTeamIds }, 'MATCHES');
+      logger.info('🆕 New teams added, main effect will fetch all', { addedTeams: addedTeamIds }, 'MATCHES');
       favoriteTeamsRef.current = favoriteTeams;
-      setLoading(true);
-      clearMatchesCache().then(async () => {
-        await fetchMatches();
-        await fetchLiveOnly();
-      });
     } 
     // ✅ Sadece takım çıkarıldıysa: Mevcut maçları filtrele (cache temizleme gerekmez)
     else if (removedTeamIds.length > 0) {
@@ -808,17 +805,19 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       const { past, live, upcoming } = categorizeMatches(favoriteMatches);
       logger.info('📊 Categorized results', { past: past.length, live: live.length, upcoming: upcoming.length }, 'MATCHES');
       
-      // ✅ API'dan 0 maç döndü
+      // ✅ API'dan 0 maç döndü - mevcut listeyi koru (kullanıcı yeni takım eklediyse eski takımların maçları görünmeye devam etsin)
       if (past.length === 0 && live.length === 0 && upcoming.length === 0) {
         logger.info('⚠️ No favorite team matches found from API', undefined, 'MATCHES');
-        fetchCompletedRef.current = true; // Cache gecikmeli uygulamasını iptal et (geri dönüş flash önlemi)
+        fetchCompletedRef.current = true;
+
+        const hasExistingData = pastMatches.length > 0 || liveMatches.length > 0 || upcomingMatches.length > 0;
 
         if (backendConnectionError && successfulFetches === 0) {
           logger.info('Backend unreachable, keeping cached matches', undefined, 'MATCHES');
           setError('Backend bağlantısı kurulamadı. Eski veriler gösteriliyor.');
           setLoading(false);
-        } else if (hasLoadedOnce) {
-          logger.info('✅ Keeping cached matches (no new matches from API)', undefined, 'MATCHES');
+        } else if (hasLoadedOnce || hasExistingData) {
+          logger.info('✅ Keeping existing matches (no new data from API)', undefined, 'MATCHES');
           setError(null);
         } else {
           setPastMatches([]);
@@ -840,11 +839,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
           setHasLoadedOnce(true);
         }
         
-        // ✅ İlk yüklemeden sonra HEMEN canlı maçları da çek
-        // Bu, cache'den NS ile gelen ama gerçekte canlı olan maçları yakalar
-        setTimeout(() => {
-          fetchLiveOnly();
-        }, 100); // Küçük delay - state'lerin yerleşmesi için
+        // fetchLiveOnly artık ana effect'ten (fetchMatches().then(() => fetchLiveOnly())) çağrılıyor
       }
 
     } catch (err: any) {
@@ -961,7 +956,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     const delay = isFirstFetchRunRef.current ? 0 : FETCH_DEBOUNCE_MS;
     if (isFirstFetchRunRef.current) isFirstFetchRunRef.current = false;
     const t = setTimeout(() => {
-      fetchMatches();
+      fetchMatches().then(() => fetchLiveOnly());
     }, delay);
     return () => clearTimeout(t);
   }, [favoriteTeamIdsString]); // eslint-disable-line react-hooks/exhaustive-deps

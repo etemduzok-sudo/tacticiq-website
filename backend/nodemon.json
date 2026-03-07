@@ -1,6 +1,19 @@
 {
   "watch": ["server.js", "routes/", "services/", "config/", "utils/", "middleware/"],
-  "ignore": ["data/", "backups/", "scripts/", "node_modules/", "*.json", "*.log", "*.txt", "*.env"],
+  "ignore": [
+    "data",
+    "data/**",
+    "**/data/**",
+    "backups",
+    "scripts",
+    "node_modules",
+    "**/*.json",
+    "**/*.log",
+    "**/*.txt",
+    ".env",
+    "**/api-usage*.json",
+    "**/db-status*"
+  ],
   "ext": "js",
-  "delay": "2000"
+  "delay": "3000"
 }
