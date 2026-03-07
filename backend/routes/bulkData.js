@@ -103,7 +103,7 @@ router.post('/download', async (req, res) => {
       // --- 1. MAÇLAR (en büyük veri) ---
       try {
         if (isNational) {
-          // Milli takım: 2025, 2026 sezonları paralel (2024 artık eski)
+          // Milli takım: sadece güncel 2025, 2026 sezonları (2024 kullanılmaz)
           const seasonPromises = [2025, 2026].map(async (s) => {
             try {
               if (databaseService.enabled) {
@@ -351,6 +351,70 @@ router.post('/download', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [BULK] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// GET /api/bulk-data/team-leagues?teamIds=611,645,549&season=2025
+// Takımın o sezonda oynadığı ligleri API-Football/DB'den döndürür (favori ekranda gerçek ligler için)
+// Sezon: 2025 = 2025-26 (güncel sezon). Sadece istenen sezon kullanılır.
+router.get('/team-leagues', async (req, res) => {
+  try {
+    const { teamIds, season } = req.query;
+    if (!teamIds || typeof teamIds !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'teamIds query param required (comma-separated)',
+      });
+    }
+    const ids = teamIds
+      .split(',')
+      .map((id) => parseInt(id.trim(), 10))
+      .filter((n) => !isNaN(n) && n > 0);
+    if (ids.length === 0) {
+      return res.json({ success: true, data: {} });
+    }
+    const currentSeason = parseInt(season || '2025', 10);
+
+    const data = {};
+    for (const tid of ids) {
+      const names = new Set();
+      let matches = [];
+
+      if (databaseService.enabled) {
+        const dbRows = await databaseService.getTeamMatches(tid, currentSeason);
+        if (dbRows && dbRows.length > 0) {
+          matches = dbRows.map((row) => ({
+            league: row.league ? { name: row.league.name } : {},
+          }));
+        }
+      }
+      if (matches.length === 0) {
+        try {
+          const apiData = await footballApi.getFixturesByTeam(tid, currentSeason);
+          if (apiData.response && apiData.response.length > 0) {
+            matches = apiData.response;
+            if (databaseService.enabled) {
+              await databaseService.upsertMatches(apiData.response).catch(() => {});
+            }
+          }
+        } catch (e) {
+          console.warn(`[team-leagues] API failed team ${tid}:`, e.message);
+        }
+      }
+      for (const m of matches) {
+        const name = m.league?.name;
+        if (name && typeof name === 'string') names.add(name.trim());
+      }
+      data[tid] = Array.from(names).sort((a, b) => a.localeCompare(b));
+    }
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('❌ [BULK] team-leagues error:', error);
     res.status(500).json({
       success: false,
       error: error.message,

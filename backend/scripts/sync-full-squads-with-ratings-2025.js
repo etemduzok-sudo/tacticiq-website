@@ -218,8 +218,8 @@ function calculatePlayerAttributes(playerStats) {
  * Ligdeki takımları çek
  */
 async function fetchTeamsForLeague(leagueId, leagueName) {
-  // Birden fazla sezon dene (bazı ligler için 2024, bazıları için 2023 gerekebilir)
-  const seasonsToTry = [2025, 2024]; // Önce 2025, yoksa 2024
+  // Sadece güncel sezon (2025-26)
+  const seasonsToTry = [2025];
   
   for (const season of seasonsToTry) {
     try {

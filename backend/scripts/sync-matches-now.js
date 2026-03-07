@@ -22,6 +22,7 @@ const PRIORITY_LEAGUES = [
   { id: 78, name: 'Bundesliga' },
   { id: 61, name: 'Ligue 1' },
   { id: 203, name: 'Süper Lig' },
+  { id: 206, name: 'Türkiye Kupası' },
   { id: 94, name: 'Primeira Liga' },
   { id: 88, name: 'Eredivisie' },
   { id: 144, name: 'Jupiler Pro League' },
@@ -107,14 +108,8 @@ async function run() {
   console.log(`Tarih: ${new Date().toLocaleString('tr-TR')}`);
   console.log('');
   
-  // 2024 sezonu (2024-25)
-  console.log('📋 2024 Sezonu Maçları:');
-  for (const league of PRIORITY_LEAGUES) {
-    await updateLeagueMatches(league.id, league.name, 2024);
-  }
-  
-  // 2025 sezonu (2025-26) - eğer başladıysa
-  console.log('\n📋 2025 Sezonu Maçları:');
+  // Sadece güncel sezon 2025-26 (2024 kullanılmaz)
+  console.log('📋 2025 Sezonu Maçları:');
   for (const league of PRIORITY_LEAGUES) {
     await updateLeagueMatches(league.id, league.name, 2025);
   }

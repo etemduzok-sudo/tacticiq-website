@@ -620,7 +620,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
           
           if (isNationalTeam) {
             // Milli takım: Paralel olarak 3 sezonu çek
-            const nationalSeasons = [2024, 2025, 2026];
+            const nationalSeasons = [2025, 2026]; // Güncel sezon 2025-26; 2024 kullanılmıyor
             const seasonPromises = nationalSeasons.map(async (season) => {
               try {
                 const url = `/matches/team/${team.id}/season/${season}`;

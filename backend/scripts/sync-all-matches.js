@@ -26,6 +26,7 @@ const PRIORITY_LEAGUES = [
   { id: 78, name: 'Bundesliga' },
   { id: 61, name: 'Ligue 1' },
   { id: 203, name: 'Süper Lig' },
+  { id: 206, name: 'Türkiye Kupası' },
   // Diğer önemli Avrupa ligleri
   { id: 94, name: 'Primeira Liga' },
   { id: 88, name: 'Eredivisie' },

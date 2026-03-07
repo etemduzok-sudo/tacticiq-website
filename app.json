@@ -8,7 +8,7 @@
     "userInterfaceStyle": "automatic",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#059669"
+      "backgroundColor": "#0F2A24"
     },
     "ios": {
       "supportsTablet": true,
@@ -21,7 +21,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#059669"
+        "backgroundColor": "#0F2A24"
       },
       "package": "com.tacticiq.app",
       "userInterfaceStyle": "automatic"
@@ -47,7 +47,7 @@
       "expo-web-browser"
     ],
     "extra": {
-      "newArchEnabled": true,
+      "newArchEnabled": false,
       "eas": {
         "projectId": "f33d2180-e311-47ac-b004-59e271e144f4"
       }

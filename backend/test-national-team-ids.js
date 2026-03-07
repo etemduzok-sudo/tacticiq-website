@@ -15,7 +15,7 @@ const testIds = {
 
 async function testTeamId(teamId, expectedName) {
   try {
-    const response = await axios.get(`${BASE_URL}/matches/team/${teamId}/season/2024`, {
+    const response = await axios.get(`${BASE_URL}/matches/team/${teamId}/season/2025`, {
       timeout: 5000,
     });
 

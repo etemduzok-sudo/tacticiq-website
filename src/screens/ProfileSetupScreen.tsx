@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -29,7 +29,9 @@ import {
   WEBSITE_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
 import { teamsApi } from '../services/api';
-import { getTeamById } from '../data/staticTeamsData';
+import { getTeamById, getTeamCurrentCompetitions, leagueNamesToTurkish } from '../data/staticTeamsData';
+import { getTeamLeaguesFromBulkForTeams, getTeamLeaguesFromApiWithCache } from '../services/bulkDataService';
+import { darkenHex } from '../theme/theme';
 import { filterAndSortStringList } from '../utils/teamFilterUtils';
 import { STORAGE_KEYS } from '../config/constants';
 import { logger } from '../utils/logger';
@@ -448,6 +450,7 @@ export default function ProfileSetupScreen({
   const [teamModalType, setTeamModalType] = useState<'national' | 'club' | null>(null);
   const [showNationalDropdown, setShowNationalDropdown] = useState(false);
   const [nationalTeamSearch, setNationalTeamSearch] = useState('');
+  const [teamLeaguesFromBulk, setTeamLeaguesFromBulk] = useState<Record<number, string[]>>({});
   const nationalListRef = useRef<FlatList>(null);
   
   // Animation
@@ -455,6 +458,31 @@ export default function ProfileSetupScreen({
   const translateX = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
   
+  // Bulk cache'den kulüp takımlarının lig listesi (DB – API yok)
+  const clubTeamIds = useMemo(() => {
+    const fromApi = showTeamModal && teamModalType === 'club' ? apiTeams.map(t => t.id) : [];
+    const fromSelected = selectedClubTeams.map(t => t.id);
+    return [...new Set([...fromApi, ...fromSelected])];
+  }, [showTeamModal, teamModalType, apiTeams, selectedClubTeams]);
+  // Ligler: önce bulk cache (maçlardan), yoksa API'den (günlük cache) – gerçek sezon ligleri
+  useEffect(() => {
+    if (clubTeamIds.length === 0) return;
+    Promise.all([
+      getTeamLeaguesFromBulkForTeams(clubTeamIds),
+      getTeamLeaguesFromApiWithCache(clubTeamIds),
+    ]).then(([bulkMap, apiMap]) => {
+      setTeamLeaguesFromBulk((prev) => {
+        const next = { ...prev };
+        for (const id of clubTeamIds) {
+          const bulk = bulkMap[id];
+          const api = apiMap[id];
+          next[id] = (bulk?.length ? bulk : api?.length ? api : prev[id]) ?? [];
+        }
+        return next;
+      });
+    });
+  }, [clubTeamIds.join(',')]);
+
   // Check user plan + e-posta ile kayıtta kullanıcı adını doldur (ilk kayıt: kullanıcı adı → favori takım)
   useEffect(() => {
     const checkUserPlanAndNickname = async () => {
@@ -970,10 +998,14 @@ export default function ProfileSetupScreen({
               setSelectedNationalTeam(null);
             }}
           >
-            <View style={[styles.teamColorBar, { backgroundColor: selectedNationalTeam.colors[0] || '#1FA2A6' }]} />
+            <View style={styles.teamFlagWrap}>
+              <Ionicons name="flag" size={22} color={WEBSITE_BRAND_COLORS.primary} />
+            </View>
             <View style={styles.teamCardContent}>
               <Text style={styles.teamName}>{selectedNationalTeam.name}</Text>
-              <Text style={styles.teamLeague}>Milli Takım</Text>
+              {getTeamCurrentCompetitions({ id: selectedNationalTeam.id, country: selectedNationalTeam.country, type: 'national' }).map((comp, i) => (
+                <Text key={i} style={styles.teamLeague}>{comp}</Text>
+              ))}
             </View>
             <TouchableOpacity
               style={styles.removeButton}
@@ -1001,11 +1033,16 @@ export default function ProfileSetupScreen({
         <View style={styles.selectedTeamsList}>
           {selectedClubTeams.map((team) => (
             <View key={team.id} style={styles.selectedTeamCard}>
-              <View style={[styles.teamColorBar, { backgroundColor: team.colors[0] || '#1FA2A6' }]} />
+              <View style={[styles.teamJerseyWrap, { borderColor: team.colors[0] || '#1FA2A6' }]}>
+                <LinearGradient colors={[darkenHex(team.colors[0] || '#1FA2A6', 0.25), darkenHex(team.colors[1] ?? team.colors[0] ?? '#1FA2A6', 0.25)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
+                <Ionicons name="shirt" size={18} color="#FFF" style={{ backgroundColor: 'transparent' }} />
+              </View>
               <View style={styles.teamCardContent}>
                 <Text style={styles.teamName}>{team.name}</Text>
                 {team.coach && <Text style={styles.teamCoach}>{team.coach}</Text>}
-                <Text style={styles.teamLeague}>{team.league}</Text>
+                {(teamLeaguesFromBulk[team.id]?.length ? leagueNamesToTurkish(teamLeaguesFromBulk[team.id]) : getTeamCurrentCompetitions({ id: team.id, league: team.league, country: team.country, type: 'club' })).map((comp, i) => (
+                  <Text key={i} style={styles.teamLeague}>{comp}</Text>
+                ))}
               </View>
               <TouchableOpacity
                 style={styles.removeButton}
@@ -1075,7 +1112,9 @@ export default function ProfileSetupScreen({
           
           <ScrollView style={styles.teamList} keyboardShouldPersistTaps="always">
             {apiTeams.map((team) => {
-              const teamColor = team.colors?.[0] || getTeamById(team.id)?.colors?.[0] || '#1FA2A6';
+              const colors = team.colors || getTeamById(team.id)?.colors || ['#1FA2A6', '#1FA2A6'];
+              const c1 = colors[0] || '#1FA2A6';
+              const c2 = colors[1] ?? c1;
               return (
                 <TouchableOpacity
                   key={team.id}
@@ -1083,13 +1122,30 @@ export default function ProfileSetupScreen({
                   onPress={() => handleTeamSelect(team, teamModalType)}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.teamColorBar, { backgroundColor: teamColor }]} />
+                  {teamModalType === 'club' ? (
+                    <View style={[styles.teamJerseyWrap, { borderColor: c1 }]}>
+                      <LinearGradient colors={[darkenHex(c1, 0.25), darkenHex(c2, 0.25)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFillObject, { borderRadius: 14 }]} />
+                      <Ionicons name="shirt" size={18} color="#FFF" style={{ backgroundColor: 'transparent' }} />
+                    </View>
+                  ) : (
+                    <View style={styles.teamFlagWrap}>
+                      <Ionicons name="flag" size={22} color={WEBSITE_BRAND_COLORS.primary} />
+                    </View>
+                  )}
                   <View style={styles.teamCardContent}>
                     <Text style={styles.teamName}>{team.name}</Text>
                     {team.coach && <Text style={styles.teamCoach}>{team.coach}</Text>}
-                    <Text style={styles.teamLeague}>
-                      {teamModalType === 'national' ? team.country : [team.league, team.country].filter(Boolean).join(' • ') || team.league || team.country}
-                    </Text>
+                    {(teamModalType === 'club' && teamLeaguesFromBulk[team.id]?.length
+                      ? leagueNamesToTurkish(teamLeaguesFromBulk[team.id])
+                      : getTeamCurrentCompetitions({
+                          id: team.id,
+                          league: team.league,
+                          country: team.country,
+                          type: teamModalType === 'national' ? 'national' : 'club',
+                        })
+                    ).map((comp, i) => (
+                      <Text key={i} style={styles.teamLeague}>{comp}</Text>
+                    ))}
                   </View>
                 </TouchableOpacity>
               );
@@ -1442,6 +1498,25 @@ const styles = StyleSheet.create({
     width: 4,
     backgroundColor: '#1FA2A6',
   },
+  teamJerseyWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+    alignSelf: 'center',
+    borderWidth: 1.5,
+  },
+  teamFlagWrap: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+    alignSelf: 'center',
+  },
   teamCardContent: {
     flex: 1,
     padding: 16,
@@ -1460,6 +1535,7 @@ const styles = StyleSheet.create({
   teamLeague: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 1,
   },
   removeButton: {
     padding: 16,

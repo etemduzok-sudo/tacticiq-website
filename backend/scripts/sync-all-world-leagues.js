@@ -226,8 +226,8 @@ function sleep(ms) {
 
 async function fetchTeamsForLeague(leagueId, leagueName, country) {
   try {
-    // 2024 ve 2025 sezonlarını dene (liglere göre farklı sezon dönemleri)
-    for (const season of [2025, 2024, 2023]) {
+    // Sadece güncel sezon 2025-26
+    for (const season of [2025]) {
       const data = await apiRequest('/teams', { league: leagueId, season });
       if (data.response && data.response.length > 0) {
         return data.response;

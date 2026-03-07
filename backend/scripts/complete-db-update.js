@@ -39,6 +39,7 @@ const PRIORITY_LEAGUES = [
   { id: 61, name: 'Ligue 1', country: 'France' },
   // Türkiye
   { id: 203, name: 'Süper Lig', country: 'Turkey' },
+  { id: 206, name: 'Türkiye Kupası', country: 'Turkey' },
   // Diğer önemli ligler
   { id: 94, name: 'Primeira Liga', country: 'Portugal' },
   { id: 88, name: 'Eredivisie', country: 'Netherlands' },

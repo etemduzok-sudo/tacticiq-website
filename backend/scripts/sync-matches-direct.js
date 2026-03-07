@@ -9,7 +9,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const footballApi = require('../services/footballApi');
 
 const LEAGUES = [
-  { id: 203, name: 'SÃ¼per Lig' },
+  { id: 203, name: 'Süper Lig' },
+  { id: 206, name: 'Türkiye Kupası' },
   { id: 39, name: 'Premier League' },
   { id: 140, name: 'La Liga' },
   { id: 135, name: 'Serie A' },

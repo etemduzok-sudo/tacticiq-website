@@ -45,10 +45,10 @@ const TURKISH_COLORS = {
 async function main() {
   console.log('🇹🇷 Türk Süper Lig Senkronizasyonu\n');
   
-  // 2024 sezonu
+  // 2025-26 sezonu (güncel)
   const response = await axios.get(`${BASE_URL}/teams`, {
     headers,
-    params: { league: 203, season: 2024 }
+    params: { league: 203, season: 2025 }
   });
   
   if (!response.data?.response?.length) {

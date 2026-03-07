@@ -37,7 +37,14 @@ export const BULK_STORAGE_KEYS = {
   BULK_COACH_PREFIX: 'tacticiq-bulk-coach-',
   /** Takım bazlı bilgi cache */
   BULK_INFO_PREFIX: 'tacticiq-bulk-info-',
+  /** Takım ligleri (API'den, sezon bazlı) – favori ekranda gerçek ligler */
+  TEAM_LEAGUES_CACHE: 'tacticiq-team-leagues-cache',
+  /** Takım ligleri cache timestamp (günlük güncelleme) */
+  TEAM_LEAGUES_TIMESTAMP: 'tacticiq-team-leagues-timestamp',
 } as const;
+
+/** Takım ligleri cache süresi: 24 saat (günlük güncelleme) */
+const TEAM_LEAGUES_CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 // ============ TYPES ============
 export interface BulkTeamData {
@@ -459,6 +466,148 @@ export async function getAllBulkMatches(teamIds: number[]): Promise<any[] | null
     });
   } catch {
     return null;
+  }
+}
+
+/**
+ * Takımın bulk cache'deki maçlarından benzersiz lig adlarını döndürür (DB/cache – API yok).
+ */
+export async function getTeamLeaguesFromBulk(teamId: number): Promise<string[]> {
+  const matches = await getBulkMatches(teamId);
+  if (!matches || matches.length === 0) return [];
+  const names = new Set<string>();
+  for (const m of matches) {
+    const name = m.league?.name;
+    if (name && typeof name === 'string') names.add(name.trim());
+  }
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Birden fazla takım için bulk cache'den lig listelerini döndürür.
+ */
+export async function getTeamLeaguesFromBulkForTeams(teamIds: number[]): Promise<Record<number, string[]>> {
+  const out: Record<number, string[]> = {};
+  if (!teamIds.length) return out;
+  const keys = teamIds.map(id => `${BULK_STORAGE_KEYS.BULK_MATCHES_PREFIX}${id}`);
+  const results = await AsyncStorage.multiGet(keys);
+  for (let i = 0; i < teamIds.length; i++) {
+    const teamId = teamIds[i];
+    const raw = results[i]?.[1];
+    if (!raw) {
+      out[teamId] = [];
+      continue;
+    }
+    try {
+      const matches = JSON.parse(raw);
+      const names = new Set<string>();
+      if (Array.isArray(matches)) {
+        for (const m of matches) {
+          const name = m.league?.name;
+          if (name && typeof name === 'string') names.add(name.trim());
+        }
+      }
+      out[teamId] = Array.from(names).sort((a, b) => a.localeCompare(b));
+    } catch {
+      out[teamId] = [];
+    }
+  }
+  return out;
+}
+
+/**
+ * API'den takımın o sezonda oynadığı ligleri çek (backend DB/API-Football).
+ * Favori takım ekranında gerçek ligleri göstermek için kullanılır.
+ */
+export async function fetchTeamLeaguesFromApi(
+  teamIds: number[],
+  season: number = 2025
+): Promise<Record<number, string[]>> {
+  if (!teamIds.length) return {};
+  try {
+    const baseUrl = getBaseUrl();
+    const url = `${baseUrl}/bulk-data/team-leagues?teamIds=${teamIds.join(',')}&season=${season}`;
+    const res = await fetch(url);
+    if (!res.ok) return {};
+    const json = await res.json();
+    if (!json.success || !json.data) return {};
+    const data: Record<number, string[]> = {};
+    for (const [k, v] of Object.entries(json.data)) {
+      const id = parseInt(k, 10);
+      if (!isNaN(id) && Array.isArray(v)) data[id] = v;
+    }
+    return data;
+  } catch (e) {
+    logger.warn('[BULK] fetchTeamLeaguesFromApi failed', { teamIds, error: (e as Error).message }, 'BULK');
+    return {};
+  }
+}
+
+/**
+ * Takım ligleri cache'ini temizle (güncel ligleri tekrar API'den almak için).
+ */
+export async function clearTeamLeaguesCache(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove([
+      BULK_STORAGE_KEYS.TEAM_LEAGUES_CACHE,
+      BULK_STORAGE_KEYS.TEAM_LEAGUES_TIMESTAMP,
+    ]);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Takım liglerini API cache veya istek ile al (24 saat cache).
+ * Önce bulk cache'deki maçlardan türetilmiş ligler kullanılır; yoksa bu fonksiyon API'den doldurur.
+ */
+export async function getTeamLeaguesFromApiWithCache(
+  teamIds: number[],
+  season: number = 2025
+): Promise<Record<number, string[]>> {
+  if (!teamIds.length) return {};
+  try {
+    const [cachedRaw, tsRaw] = await AsyncStorage.multiGet([
+      BULK_STORAGE_KEYS.TEAM_LEAGUES_CACHE,
+      BULK_STORAGE_KEYS.TEAM_LEAGUES_TIMESTAMP,
+    ]);
+    const cached = cachedRaw[1];
+    const ts = tsRaw[1] ? parseInt(tsRaw[1], 10) : 0;
+    const now = Date.now();
+    if (cached && ts && now - ts < TEAM_LEAGUES_CACHE_DURATION) {
+      try {
+        const parsed = JSON.parse(cached) as Record<string, string[]>;
+        const out: Record<number, string[]> = {};
+        const missing = teamIds.filter((id) => {
+          const arr = parsed[String(id)];
+          if (arr?.length) {
+            out[id] = arr;
+            return false;
+          }
+          return true;
+        });
+        if (missing.length === 0) return out;
+        const fetched = await fetchTeamLeaguesFromApi(missing, season);
+        const next = { ...parsed, ...Object.fromEntries(Object.entries(fetched).map(([k, v]) => [k, v])) };
+        await AsyncStorage.multiSet([
+          [BULK_STORAGE_KEYS.TEAM_LEAGUES_CACHE, JSON.stringify(next)],
+          [BULK_STORAGE_KEYS.TEAM_LEAGUES_TIMESTAMP, Date.now().toString()],
+        ]);
+        missing.forEach((id) => { if (fetched[id]?.length) out[id] = fetched[id]; });
+        return out;
+      } catch {
+        // cache corrupt, fetch all
+      }
+    }
+    const fetched = await fetchTeamLeaguesFromApi(teamIds, season);
+    const toStore = cached ? { ...JSON.parse(cached), ...Object.fromEntries(Object.entries(fetched).map(([k, v]) => [k, v])) } : fetched;
+    await AsyncStorage.multiSet([
+      [BULK_STORAGE_KEYS.TEAM_LEAGUES_CACHE, JSON.stringify(toStore)],
+      [BULK_STORAGE_KEYS.TEAM_LEAGUES_TIMESTAMP, Date.now().toString()],
+    ]);
+    return fetched;
+  } catch {
+    return {};
   }
 }
 

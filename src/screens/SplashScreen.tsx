@@ -31,7 +31,7 @@ interface SplashScreenProps {
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
-  const bgColor = isLight ? LIGHT_MODE.background : DARK_MODE.background;
+  const bgColor = isLight ? LIGHT_MODE.background : '#0F2A24';
   const gradientColors = isLight
     ? ['#fafaf9', '#E8E8E6', '#f5f7f6']
     : ['#0a1612', '#0F2A24', '#0a1612'];
@@ -115,8 +115,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         }
       };
       
-      // Web için 2 saniye splash göster, sonra auth check
-      const timer = setTimeout(checkAuthAndComplete, 2000);
+      // Web: en az 3 sn splash göster
+      const timer = setTimeout(checkAuthAndComplete, 3000);
       return () => clearTimeout(timer);
     }
 

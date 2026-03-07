@@ -26,7 +26,7 @@ const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#0F172A', '#020617']}
+        colors={['#0F2A24', '#0a1612']}
         style={styles.gradient}
       >
         <View style={styles.content}>
@@ -102,7 +102,7 @@ const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A', // DARK_MODE background
+    backgroundColor: '#0F2A24',
   },
   gradient: {
     flex: 1,

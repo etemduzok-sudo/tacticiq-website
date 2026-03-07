@@ -500,6 +500,19 @@ export const Z_INDEX = {
   toast: 10000,       // Toast notifications
 };
 
+// Renk koyulaştır (forma ikonu vb. için daha belirgin)
+export function darkenHex(hex: string, amount: number): string {
+  const n = hex.replace(/^#/, '');
+  let r = parseInt(n.slice(0, 2), 16);
+  let g = parseInt(n.slice(2, 4), 16);
+  let b = parseInt(n.slice(4, 6), 16);
+  const f = 1 - Math.max(0, Math.min(1, amount));
+  r = Math.round(r * f);
+  g = Math.round(g * f);
+  b = Math.round(b * f);
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
 // 🎯 HELPER FUNCTIONS
 export const getTheme = (isDark: boolean) => ({
   colors: isDark ? COLORS.dark : COLORS.light,

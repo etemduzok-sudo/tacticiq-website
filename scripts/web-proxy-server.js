@@ -14,18 +14,18 @@ const PROXY_PORT = 8082;
 const BUNDLE_PATH = '/index.bundle?platform=web&dev=true&hot=false&lazy=true';
 
 const indexHtml = `<!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" style="background-color:#0F2A24">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>TacticIQ</title>
   <style>
-    html, body { height: 100%; margin: 0; padding: 0; background: #0F172A; overflow: hidden; -webkit-overflow-scrolling: touch; }
-    #root { display: flex; flex-direction: column; min-height: 100%; height: 100%; width: 100%; }
+    html, body { height: 100%; margin: 0; padding: 0; background: #0F2A24; overflow: hidden; -webkit-overflow-scrolling: touch; }
+    #root { display: flex; flex-direction: column; min-height: 100%; height: 100%; width: 100%; background: #0F2A24; }
   </style>
 </head>
-<body>
-  <div id="root"></div>
+<body style="background-color:#0F2A24">
+  <div id="root" style="background-color:#0F2A24;display:flex;flex-direction:column;min-height:100%;height:100%;width:100%"></div>
   <script src="http://localhost:${METRO_PORT}${BUNDLE_PATH}"></script>
 </body>
 </html>`;

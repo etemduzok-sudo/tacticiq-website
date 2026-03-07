@@ -46,7 +46,7 @@ async function fetchTeamsByLeague(leagueName, leagueId) {
     
     const response = await axios.get(`${BASE_URL}/teams`, {
       headers,
-      params: { league: leagueId, season: 2024 }
+      params: { league: leagueId, season: 2025 }
     });
     
     requestCount++;

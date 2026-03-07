@@ -82,13 +82,13 @@ async function main() {
     console.log('');
     
     // 4. Fenerbahçe maçları (team 611)
-    console.log('4️⃣ Fenerbahçe maçları (team=611, season=2024)...');
+    console.log('4️⃣ Fenerbahçe maçları (team=611, season=2025)...');
     const fbRes = await axios.get(`${BASE_URL}/fixtures`, {
       headers: {
         'x-rapidapi-key': API_KEY,
         'x-rapidapi-host': 'v3.football.api-sports.io',
       },
-      params: { team: 611, season: 2024 }
+      params: { team: 611, season: 2025 }
     });
     console.log('   Results:', fbRes.data.results);
     if (fbRes.data.response && fbRes.data.response.length > 0) {

@@ -402,6 +402,121 @@ export function getFallbackClubTeamsForProfile(): StaticTeam[] {
   return ALL_CLUB_TEAMS;
 }
 
+// ==========================================
+// API-Football lig adı → Türkçe gösterim (favori ekranda gerçek ligler için)
+// ==========================================
+const LEAGUE_NAME_TR: Record<string, string> = {
+  'UEFA Champions League': 'Şampiyonlar Ligi',
+  'Champions League': 'Şampiyonlar Ligi',
+  'UEFA Europa League': 'Avrupa Ligi',
+  'Europa League': 'Avrupa Ligi',
+  'UEFA Europa Conference League': 'Konferans Ligi',
+  'Conference League': 'Konferans Ligi',
+  'Super Lig': 'Süper Lig',
+  'Süper Lig': 'Süper Lig',
+  'Turkey Cup': 'Türkiye Kupası',
+  'Turkish Cup': 'Türkiye Kupası',
+  'Türkiye Kupası': 'Türkiye Kupası',
+  'Premier League': 'Premier League',
+  'La Liga': 'La Liga',
+  'Serie A': 'Serie A',
+  'Bundesliga': 'Bundesliga',
+  'Ligue 1': 'Ligue 1',
+  'FA Cup': 'FA Cup',
+  'Copa del Rey': 'Copa del Rey',
+  'DFB-Pokal': 'DFB-Pokal',
+  'Coppa Italia': 'Coppa Italia',
+  'Coupe de France': 'Coupe de France',
+};
+
+/** API/DB'den gelen lig adını Türkçe gösterim için döndürür (bilinmiyorsa aynen döner) */
+export function leagueNameToTurkish(apiName: string): string {
+  if (!apiName || typeof apiName !== 'string') return apiName || '';
+  const trimmed = apiName.trim();
+  return LEAGUE_NAME_TR[trimmed] ?? trimmed;
+}
+
+/** Lig adları listesini Türkçe gösterime çevirir */
+export function leagueNamesToTurkish(names: string[]): string[] {
+  if (!Array.isArray(names)) return [];
+  return names.map(leagueNameToTurkish);
+}
+
+// ==========================================
+// DEVAM EDEN YARIŞMALAR (takımın mücadele ettiği ligler/kupalar)
+// ==========================================
+
+const LEAGUE_COMPETITIONS: Record<string, string[]> = {
+  'Süper Lig': ['Süper Lig', 'Türkiye Kupası'],
+  'Premier League': ['Premier League', 'FA Cup', 'EFL Cup'],
+  'La Liga': ['La Liga', 'Copa del Rey'],
+  'Bundesliga': ['Bundesliga', 'DFB-Pokal'],
+  'Serie A': ['Serie A', 'Coppa Italia'],
+  'Ligue 1': ['Ligue 1', 'Coupe de France'],
+  'Primeira Liga': ['Primeira Liga', 'Taça de Portugal'],
+  'Brasileirão': ['Brasileirão', 'Copa do Brasil'],
+  'Eredivisie': ['Eredivisie', 'KNVB Beker'],
+  'Argentine Primera': ['Primera División', 'Copa Argentina'],
+  'Liga MX': ['Liga MX', 'Copa MX'],
+  'Saudi Pro League': ['Saudi Pro League', 'King\'s Cup'],
+  'Premyer Liqa': ['Premyer Liqa', 'Azərbaycan Kuboku'],
+};
+
+/** Takım ID'sine göre ek Avrupa/uluslararası yarışmalar (Şampiyonlar Ligi, Avrupa Ligi vb.) */
+const TEAM_EXTRA_COMPETITIONS: Record<number, string[]> = {
+  645: ['Şampiyonlar Ligi'],   // Galatasaray
+  611: ['Şampiyonlar Ligi'],   // Fenerbahçe
+  549: ['Avrupa Ligi'],        // Beşiktaş
+  998: ['Konferans Ligi'],     // Trabzonspor
+  564: ['Avrupa Ligi'],       // Başakşehir (örnek)
+  50: ['Şampiyonlar Ligi'],   // Manchester City
+  40: ['Şampiyonlar Ligi'],   // Liverpool
+  33: ['Avrupa Ligi'],        // Manchester United
+  541: ['Şampiyonlar Ligi'],  // Real Madrid
+  529: ['Şampiyonlar Ligi'],  // Barcelona
+};
+
+/** Milli takım ülke koduna göre devam eden yarışmalar */
+const NATIONAL_COMPETITIONS: Record<string, string[]> = {
+  'Turkey': ['Dünya Kupası Elemeleri', 'Playoff oynayacak'],
+  'Germany': ['Dünya Kupası Elemeleri'],
+  'France': ['Dünya Kupası Elemeleri'],
+  'England': ['Dünya Kupası Elemeleri'],
+  'Spain': ['Dünya Kupası Elemeleri'],
+  'Italy': ['Dünya Kupası Elemeleri'],
+  'Brazil': ['Dünya Kupası Elemeleri', 'Copa América'],
+  'Argentina': ['Dünya Kupası Elemeleri', 'Copa América'],
+  'Portugal': ['Dünya Kupası Elemeleri'],
+  'Netherlands': ['Dünya Kupası Elemeleri'],
+  'Belgium': ['Dünya Kupası Elemeleri'],
+  'Croatia': ['Dünya Kupası Elemeleri'],
+  'Poland': ['Dünya Kupası Elemeleri'],
+  'Ukraine': ['Dünya Kupası Elemeleri'],
+  'Denmark': ['Dünya Kupası Elemeleri'],
+  'Switzerland': ['Dünya Kupası Elemeleri'],
+};
+
+export function getTeamCurrentCompetitions(team: {
+  id: number;
+  league?: string;
+  country?: string;
+  type?: 'club' | 'national';
+}): string[] {
+  const type = team.type ?? (getTeamById(team.id)?.type);
+  const country = team.country ?? getTeamById(team.id)?.country ?? '';
+  const league = team.league ?? getTeamById(team.id)?.league ?? '';
+
+  if (type === 'national') {
+    const byCountry = NATIONAL_COMPETITIONS[country] ?? ['Dünya Kupası Elemeleri'];
+    return byCountry;
+  }
+
+  const byLeague = league ? (LEAGUE_COMPETITIONS[league] ?? [league]) : [];
+  const extra = TEAM_EXTRA_COMPETITIONS[team.id] ?? [];
+  const combined = [...byLeague, ...extra];
+  return combined.length ? combined : (league ? [league] : []);
+}
+
 export default {
   ALL_CLUB_TEAMS,
   ALL_NATIONAL_TEAMS,
@@ -413,4 +528,5 @@ export default {
   searchTeams,
   getTeamsByCountry,
   getTeamsByLeague,
+  getTeamCurrentCompetitions,
 };

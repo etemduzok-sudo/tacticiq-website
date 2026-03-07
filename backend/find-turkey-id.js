@@ -5,7 +5,7 @@ const BASE_URL = 'http://localhost:3000/api';
 
 async function checkTeam(teamId) {
   try {
-    const response = await axios.get(`${BASE_URL}/matches/team/${teamId}/season/2024`, {
+    const response = await axios.get(`${BASE_URL}/matches/team/${teamId}/season/2025`, {
       timeout: 8000,
     });
 

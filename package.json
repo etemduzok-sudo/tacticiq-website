@@ -7,7 +7,7 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web --no-dev",
+    "web": "node scripts/kill-port-8081.js && node scripts/web-dev-no-router.js",
     "web:kill": "node scripts/kill-port-8081.js",
     "web:clear": "expo start --web --clear",
     "web:dev": "node scripts/kill-port-8081.js && node scripts/web-dev-no-router.js",

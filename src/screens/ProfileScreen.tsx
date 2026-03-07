@@ -20,7 +20,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { changeLanguage as changeI18nLanguage } from '../i18n';
 import { setUserTimezone } from '../utils/timezoneUtils';
-import { getFallbackClubTeamsForProfile, getTeamById } from '../data/staticTeamsData';
+import { getFallbackClubTeamsForProfile, getTeamById, getTeamCurrentCompetitions, leagueNamesToTurkish } from '../data/staticTeamsData';
+import { getTeamLeaguesFromBulkForTeams, getTeamLeaguesFromApiWithCache } from '../services/bulkDataService';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -38,7 +39,7 @@ import { profileService } from '../services/profileService';
 import { setFavoriteTeams as saveFavoriteTeamsToStorage } from '../utils/storageUtils';
 import { calculateTopPercent } from '../types/profile.types';
 import { teamsApi } from '../services/api';
-import { SPACING, TYPOGRAPHY, BRAND, COLORS, SIZES, SHADOWS } from '../theme/theme';
+import { SPACING, TYPOGRAPHY, BRAND, COLORS, SIZES, SHADOWS, darkenHex } from '../theme/theme';
 import { StandardHeader, ScreenLayout } from '../components/layouts';
 import { useTheme } from '../contexts/ThemeContext';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal';
@@ -258,11 +259,37 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [apiTeams, setApiTeams] = useState<Array<{ id: number; name: string; colors: string[]; country: string; league: string; type: 'club' | 'national'; coach?: string }>>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [teamLeaguesFromBulk, setTeamLeaguesFromBulk] = useState<Record<number, string[]>>({});
   const clubDropdownScrollRef = React.useRef<ScrollView>(null);
   const nationalDropdownScrollRef = React.useRef<ScrollView>(null);
   
   // Tüm liglerden kulüp takımları - staticTeamsData'dan (tek kaynak)
   const FALLBACK_CLUB_TEAMS = getFallbackClubTeamsForProfile();
+
+  // Bulk cache'den takım bazlı lig listesi (DB – API yok)
+  const clubTeamIds = useMemo(() => {
+    const fromApi = openDropdown === 'club' ? apiTeams.map(t => t.id) : [];
+    const fromSelected = selectedClubTeams.filter((t): t is NonNullable<typeof t> => t != null).map(t => t.id);
+    return [...new Set([...fromApi, ...fromSelected])];
+  }, [openDropdown, apiTeams, selectedClubTeams]);
+  // Ligler: önce bulk cache (maçlardan), yoksa API'den (günlük cache) – gerçek sezon ligleri
+  useEffect(() => {
+    if (clubTeamIds.length === 0) return;
+    Promise.all([
+      getTeamLeaguesFromBulkForTeams(clubTeamIds),
+      getTeamLeaguesFromApiWithCache(clubTeamIds),
+    ]).then(([bulkMap, apiMap]) => {
+      setTeamLeaguesFromBulk((prev) => {
+        const next = { ...prev };
+        for (const id of clubTeamIds) {
+          const bulk = bulkMap[id];
+          const api = apiMap[id];
+          next[id] = (bulk?.length ? bulk : api?.length ? api : prev[id]) ?? [];
+        }
+        return next;
+      });
+    });
+  }, [clubTeamIds.join(',')]);
 
   // normalizeText component dışında tanımlı (pure function)
 
@@ -1661,9 +1688,7 @@ if (unifiedProfile) {
                         keyboardShouldPersistTaps="always"
                         nestedScrollEnabled={true}
                       >
-                        {apiTeams.map((team, idx) => {
-                          const teamColor = (team as any).colors?.[0] || getTeamById(team.id)?.colors?.[0] || theme.primary;
-                          return (
+                        {apiTeams.map((team, idx) => (
                             <TouchableOpacity
                               key={`${team.id}-${team.name}-${idx}`}
                               style={styles.dropdownItem}
@@ -1680,7 +1705,6 @@ if (unifiedProfile) {
                                 handleTeamSelect(teamToAdd, 'national');
                               }}
                             >
-                              <View style={[styles.dropdownItemColorStrip, { backgroundColor: teamColor }]} />
                               <View style={styles.dropdownItemContent}>
                                 {(team as any).flag || getCountryFlagUrl(team.country) ? (
                                   <Image source={{ uri: (team as any).flag || getCountryFlagUrl(team.country)! }} style={styles.teamFlagImage} resizeMode="cover" />
@@ -1689,12 +1713,13 @@ if (unifiedProfile) {
                                 )}
                                 <View style={{ flex: 1 }}>
                                   <Text style={styles.dropdownItemName}>{team.name}</Text>
-                                  <Text style={styles.dropdownItemMeta}>{translateCountry(team.country)}</Text>
+                                  {getTeamCurrentCompetitions({ id: team.id, country: team.country, type: 'national' }).map((comp, i) => (
+                                    <Text key={i} style={[styles.dropdownItemMeta, i > 0 && styles.dropdownItemCompetition]}>{comp}</Text>
+                                  ))}
                                 </View>
                               </View>
                             </TouchableOpacity>
-                          );
-                        })}
+                          ))}
                       </ScrollView>
                     </View>
                   </View>
@@ -1742,31 +1767,30 @@ if (unifiedProfile) {
                   />
                 </TouchableOpacity>
                 
-                {/* Seçilen Takımlar - Badge olarak (tıklanabilir silme) */}
+                {/* Seçilen Takımlar - Sade pill + isim + sil */}
                 {selectedClubTeams.filter(Boolean).length > 0 && (
                   <View style={styles.selectedTeamsBadges}>
                     {selectedClubTeams.map((team, idx) => {
                       if (!team) return null;
-                      const teamColor = (team as any).colors?.[0] || getTeamById(team.id)?.colors?.[0] || theme.primary;
+                      const colors = (team as any).colors || getTeamById(team.id)?.colors || [theme.primary, theme.primary];
+                      const c1 = colors[0] || theme.primary;
+                      const c2 = colors[1] ?? c1;
                       return (
-                        <TouchableOpacity
-                          key={team.id || idx}
-                          style={[
-                            styles.teamBadge,
-                            {
-                              backgroundColor: teamColor + '22',
-                              borderColor: teamColor + '66',
-                            },
-                          ]}
-                          onPress={() => handleRemoveClubTeam(idx)}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="football" size={14} color={teamColor} />
-                          <Text style={styles.teamBadgeText}>{team.name}</Text>
-                          <View style={[styles.teamBadgeRemove, { backgroundColor: teamColor }]}>
-                            <Ionicons name="close" size={12} color="#FFFFFF" />
+                        <View key={team.id || idx} style={styles.teamBadge}>
+                          <View style={[styles.teamBadgeJerseyWrap, { borderColor: c1 }]}>
+                            <LinearGradient colors={[darkenHex(c1, 0.25), darkenHex(c2, 0.25)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.teamBadgeJerseyBg} />
+                            <Ionicons name="shirt" size={14} color="#FFF" style={styles.teamBadgeJerseyIcon} />
                           </View>
-                        </TouchableOpacity>
+                          <Text style={styles.teamBadgeText} numberOfLines={1}>{team.name}</Text>
+                          <TouchableOpacity
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            onPress={() => handleRemoveClubTeam(idx)}
+                            style={styles.teamBadgeRemoveBtn}
+                            activeOpacity={0.6}
+                          >
+                            <Ionicons name="close" size={16} color={theme.mutedForeground} />
+                          </TouchableOpacity>
+                        </View>
                       );
                     })}
                   </View>
@@ -1827,7 +1851,9 @@ if (unifiedProfile) {
                           nestedScrollEnabled={true}
                         >
                           {apiTeams.filter(t => !selectedClubTeams.some(ct => ct && ct.id === t.id)).map((team, idx) => {
-                            const teamColor = (team as any).colors?.[0] || getTeamById(team.id)?.colors?.[0] || theme.primary;
+                            const colors = (team as any).colors || getTeamById(team.id)?.colors || [theme.primary, theme.primary];
+                            const c1 = colors[0] || theme.primary;
+                            const c2 = colors[1] ?? c1;
                             return (
                               <TouchableOpacity
                                 key={`${team.id}-${team.name}-${idx}`}
@@ -1850,12 +1876,16 @@ if (unifiedProfile) {
                                 }}
                                 disabled={selectedClubTeams.filter(Boolean).length >= 5}
                               >
-                                <View style={[styles.dropdownItemColorStrip, { backgroundColor: teamColor }]} />
                                 <View style={styles.dropdownItemContent}>
-                                  <Ionicons name="football" size={20} color={teamColor} />
+                                  <View style={[styles.dropdownItemJerseyWrap, { borderColor: c1 }]}>
+                                    <LinearGradient colors={[darkenHex(c1, 0.25), darkenHex(c2, 0.25)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.dropdownItemJerseyBg} />
+                                    <Ionicons name="shirt" size={18} color="#FFF" style={styles.dropdownItemJerseyIcon} />
+                                  </View>
                                   <View style={{ flex: 1 }}>
                                     <Text style={styles.dropdownItemName}>{team.name}</Text>
-                                    <Text style={styles.dropdownItemMeta}>{team.league ? `${team.league} • ${translateCountry(team.country)}` : translateCountry(team.country)}</Text>
+                                    {(teamLeaguesFromBulk[team.id]?.length ? leagueNamesToTurkish(teamLeaguesFromBulk[team.id]) : getTeamCurrentCompetitions({ id: team.id, league: (team as any).league, country: team.country, type: 'club' })).map((comp, i) => (
+                                      <Text key={i} style={[styles.dropdownItemMeta, i > 0 && styles.dropdownItemCompetition]}>{comp}</Text>
+                                    ))}
                                   </View>
                                 </View>
                               </TouchableOpacity>
@@ -1953,9 +1983,9 @@ if (unifiedProfile) {
                 )}
             </View>
               {nicknameError ? (
-                <Text style={[styles.formHint, { color: '#EF4444' }]}>{nicknameError}</Text>
+                <Text style={[styles.formHint, { color: "#EF4444" }]}>{nicknameError}</Text>
               ) : nicknameStatus === 'available' ? (
-                <Text style={[styles.formHint, { color: '#22C55E' }]>Kullanıcı adı uygun. Otomatik kaydedilir.</Text>
+                <Text style={[styles.formHint, { color: "#22C55E" }]}>Kullanıcı adı uygun. Otomatik kaydedilir.</Text>
               ) : (
                 <Text style={styles.formHint}>Sadece harf, rakam ve alt çizgi. Otomatik kaydedilir.</Text>
               )}
@@ -2969,6 +2999,8 @@ if (unifiedProfile) {
 
 const createStyles = (isDark: boolean = true) => {
   const theme = isDark ? COLORS.dark : COLORS.light;
+  // Web'de theme.border + '80' gibi kullanım "rgba(230,230,230,0.1)80" üretiyor (geçersiz). Tek geçerli değerler:
+  const borderRgb = isDark ? '230, 230, 230' : '15, 42, 36';
   return StyleSheet.create({
   container: {
     flex: 1,
@@ -3421,7 +3453,7 @@ const createStyles = (isDark: boolean = true) => {
     marginBottom: SPACING.base,
     paddingBottom: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.border + '40', // Subtle divider
+    borderBottomColor: `rgba(${borderRgb}, 0.25)`, // Subtle divider
   },
   cardContentCentered: {
     alignItems: 'center',
@@ -5166,7 +5198,7 @@ const createStyles = (isDark: boolean = true) => {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderWidth: 1.5,
-    borderColor: theme.border + '80',
+    borderColor: `rgba(${borderRgb}, 0.5)`,
     borderRadius: 10,
     backgroundColor: theme.card,
   },
@@ -5247,7 +5279,7 @@ const createStyles = (isDark: boolean = true) => {
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.base,
     borderBottomWidth: 1,
-    borderBottomColor: theme.border + '60',
+    borderBottomColor: `rgba(${borderRgb}, 0.37)`,
     backgroundColor: theme.primary + '12',
   },
   dropdownModalTitle: {
@@ -5278,7 +5310,7 @@ const createStyles = (isDark: boolean = true) => {
     paddingHorizontal: 0,
     paddingVertical: 0,
     borderBottomWidth: 1,
-    borderBottomColor: theme.border + '50',
+    borderBottomColor: `rgba(${borderRgb}, 0.31)`,
     flexDirection: 'row',
     alignItems: 'stretch',
     minHeight: 56,
@@ -5286,6 +5318,22 @@ const createStyles = (isDark: boolean = true) => {
   dropdownItemColorStrip: {
     width: 4,
     borderRadius: 0,
+  },
+  dropdownItemJerseyWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  dropdownItemJerseyBg: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 14,
+  },
+  dropdownItemJerseyIcon: {
+    backgroundColor: 'transparent',
   },
   dropdownItemContent: {
     flex: 1,
@@ -5305,6 +5353,12 @@ const createStyles = (isDark: boolean = true) => {
     color: theme.secondary,
     fontWeight: TYPOGRAPHY.medium,
   },
+  dropdownItemCompetition: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.secondary,
+    fontWeight: TYPOGRAPHY.medium,
+    marginTop: 1,
+  },
   dropdownItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -5317,11 +5371,11 @@ const createStyles = (isDark: boolean = true) => {
     borderRadius: 3,
   },
 
-  // Selected Teams Badges - Estetik Tasarım
+  // Selected Teams Badges - Sade, dropdown ile uyumlu
   selectedTeamsBadges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
     marginTop: SPACING.md,
     paddingVertical: 4,
   },
@@ -5329,45 +5383,42 @@ const createStyles = (isDark: boolean = true) => {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingLeft: 14,
-    paddingRight: 10,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(31, 162, 166, 0.12)',
-    borderRadius: 25,
+    paddingVertical: 6,
+    paddingLeft: 8,
+    paddingRight: 6,
+    maxWidth: '100%',
+    backgroundColor: theme.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: `rgba(${borderRgb}, 0.6)`,
+  },
+  teamBadgeJerseyWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(31, 162, 166, 0.35)',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 2px 8px rgba(31, 162, 166, 0.15)',
-        transition: 'all 0.2s ease',
-      },
-      ios: {
-        shadowColor: '#1FA2A6',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+  },
+  teamBadgeJerseyBg: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 12,
+  },
+  teamBadgeJerseyIcon: {
+    backgroundColor: 'transparent',
   },
   teamBadgeText: {
+    flex: 1,
     fontSize: 13,
-    color: isDark ? '#E2E8F0' : '#0F2A24',
+    color: theme.foreground,
     fontWeight: '600',
-    letterSpacing: 0.3,
+    minWidth: 0,
   },
-  teamBadgeRemove: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(239, 68, 68, 0.85)',
+  teamBadgeRemoveBtn: {
+    padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 2,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
 
   // Locked Section
@@ -5542,7 +5593,7 @@ const createStyles = (isDark: boolean = true) => {
     padding: SPACING.md,
     gap: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.border + '40',
+    borderBottomColor: `rgba(${borderRgb}, 0.25)`,
   },
   languageOptionSelected: {
     backgroundColor: theme.primary + '15',
