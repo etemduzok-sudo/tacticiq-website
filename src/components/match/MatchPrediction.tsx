@@ -3208,7 +3208,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       })()}
                     </View>
                     {/* Formasyon bildirimi: saha içi sağ alt, 2 satır, sadece kadro tahmini varken; Atak sarı, Defans kırmızı */}
-                    <View style={styles.myPredictionFormationInsideField} pointerEvents="box-none">
+                    <View style={[styles.myPredictionFormationInsideField, { pointerEvents: 'box-none' }]}>
                       <View style={styles.myPredictionFormationInsideFieldBox}>
                         <TouchableOpacity
                           style={[styles.myPredictionFormationInsideFieldRow, myPredictionFormationExpanded === 'attack' && styles.myPredictionFormationInsideFieldRowActive]}
@@ -3821,8 +3821,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     onPress={hasConnectionErrorOverlay ? undefined : () => setShowTeamPerfPopup(true)}
                     activeOpacity={0.78}
                     disabled={hasConnectionErrorOverlay}
-                    pointerEvents={hasConnectionErrorOverlay ? 'none' : 'auto'}
                     style={[styles.fieldBelowSection, styles.fieldBelowSectionTeamPerf, {
+                      pointerEvents: hasConnectionErrorOverlay ? 'none' : 'auto',
                       flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', width: '100%', minWidth: 0,
                       borderRadius: 12, overflow: 'hidden',
                       backgroundColor: '#263E3C',
@@ -6572,7 +6572,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#E2E8F0' }}>{playerInfoPopup.playerName}</Text>
                               </View>
                               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                                <Ionicons name="person-add-circle" size={14} color="#F97316" style={{ marginTop: 2 }} />
+                                <Ionicons name="person-add" size={14} color="#F97316" style={{ marginTop: 2 }} />
                                 <View style={{ flex: 1 }}>
                                   <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 4 }}>Oyundan çıkar yerine girer (en yüksek oy alan 3):</Text>
                                   {(playerInfoPopup.communityData.topSubstituteStats && playerInfoPopup.communityData.topSubstituteStats.length > 0)
@@ -6624,7 +6624,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                 </Text>
                               </View>
                               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                                <Ionicons name="person-add-circle" size={14} color="#5EEAD4" style={{ marginTop: 2 }} />
+                                <Ionicons name="person-add" size={14} color="#5EEAD4" style={{ marginTop: 2 }} />
                                 <View style={{ flex: 1 }}>
                                   <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 4 }}>Sakatlanarak çıkar yerine kim girer (en yüksek oy alan 3):</Text>
                                   {(playerInfoPopup.communityData.topInjuryReplacementStats && playerInfoPopup.communityData.topInjuryReplacementStats.length > 0)
@@ -7177,7 +7177,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     )}
                     {wasSubbedIn && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(249,115,22,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                        <Ionicons name="person-add-circle" size={12} color="#F97316" />
+                        <Ionicons name="person-add" size={12} color="#F97316" />
                         <Text style={{ color: '#F97316', fontSize: 11, fontWeight: '700' }}>Girdi {subMinute ? `(${subMinute}')` : ''}{liveReactionPlayer.substitutedFor ? ` ↔ ${liveReactionPlayer.substitutedFor.split(' ').pop()}` : ''}</Text>
                       </View>
                     )}

@@ -266,17 +266,8 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
       }
     });
     
-    console.log('🔄 [MatchStats] Substitution map:', Object.keys(map).length, 'oyuncu');
     return map;
   }, [events]);
-  // ✅ Debug: matchData yapısını logla
-  console.log('📊 [MatchStats] RENDER - matchData:', {
-    id: matchId,
-    status: matchData?.status,
-    isLive: matchData?.isLive,
-    minute: matchData?.minute,
-    fixtureStatus: matchData?.fixture?.status,
-  });
   
   const [activeTab, setActiveTab] = useState<'match' | 'players'>('match');
   const [matchStats, setMatchStats] = useState<DisplayStat[]>([]);
@@ -347,7 +338,6 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'INT'];
   const isLiveStatus = LIVE_STATUSES.includes(matchStatus);
   
-  console.log('📊 [MatchStats] matchStatus:', matchStatus, 'isLive:', matchData?.isLive, 'isLiveStatus:', isLiveStatus);
   
   // ✅ Mock maçlarda istatistik varsa göster (maç canlı demektir)
   const hasMockStats = fixtureId ? isMockTestMatch(fixtureId) && getMockMatchStatistics(fixtureId) !== null : false;
@@ -381,7 +371,6 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
     });
     if (mergedStats.length > 0) {
       setMatchStats(apiStatsToDisplay(mergedStats));
-      console.log('📊 [MatchStats] Canlı maç istatistikleri güncellendi (parent)', mergedStats.length);
     }
   }, [liveStatistics, isLiveStatus]);
 
@@ -403,7 +392,6 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
       if (mockStats) {
         setMatchStats(apiStatsToDisplay(mockStats));
         setStatsLoading(false);
-        console.log('📊 [MatchStats] Mock maç istatistikleri yüklendi:', id);
         return;
       }
     }
@@ -443,12 +431,6 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
             });
           });
           
-          console.log('📊 [MatchStats] API istatistikleri yüklendi:', { 
-            matchId: id, 
-            statCount: mergedStats.length,
-            sample: mergedStats.slice(0, 3)
-          });
-          
           setMatchStats(apiStatsToDisplay(mergedStats));
         } else if (response?.statistics && Array.isArray(response.statistics)) {
           // Eski format desteği
@@ -467,18 +449,15 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   // Kendi polling'imiz yok; parent'ın verilerini kullan → double-polling ve gereksiz API tüketimini önler.
   // Oyuncu istatistikleri için de parent üzerinden gelen veriyi tercih et.
 
-  // ✅ Oyuncu istatistiklerini API'den çek
   useEffect(() => {
     if (!matchId) return;
     const id = parseInt(matchId, 10);
     if (isNaN(id)) return;
     
-    // Mock maç kontrolü
     if (isMockTestMatch(id)) {
       const mockPlayerStats = getMockPlayerStatistics(id);
       if (mockPlayerStats) {
         setPlayerStats(mockPlayerStats as any);
-        console.log('⭐ [MatchStats] Mock oyuncu istatistikleri yüklendi:', id);
         return;
       }
     }
@@ -490,32 +469,19 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         const response = await api.matches.getMatchPlayers(id);
         if (cancelled) return;
         
-        // API format: { data: { home: [...], away: [...] } }
         const rawData = response?.data;
         
         if (rawData?.home && rawData?.away) {
-          // Sadece oynayan oyuncuları filtrele (minutesPlayed > 0 veya rating > 0)
-          const filterPlayed = (players: any[]) => 
+          const filterPlayed = (players: any[]) =>
             players.filter((p: any) => (p.minutesPlayed && p.minutesPlayed > 0) || (p.rating && p.rating > 0));
-          
           const homePlayers = filterPlayed(rawData.home || []);
           const awayPlayers = filterPlayed(rawData.away || []);
-          
-          console.log('⭐ [MatchStats] Oyuncu istatistikleri yüklendi:', { 
-            matchId: id, 
-            homeCount: homePlayers.length,
-            awayCount: awayPlayers.length,
-            sampleHome: homePlayers[0]?.name
-          });
-          
-          setPlayerStats({
-            home: homePlayers,
-            away: awayPlayers
-          });
+          if (homePlayers.length > 0 || awayPlayers.length > 0) {
+            setPlayerStats({ home: homePlayers, away: awayPlayers });
+          }
         }
       } catch (_e) {
-        console.log('⭐ [MatchStats] Oyuncu API hatası:', _e);
-        // Hata durumunda boş bırak; yanlış veri göstermek güven kaybına yol açar
+        if (__DEV__) console.log('[MatchStats] Oyuncu API hatası:', _e);
         setPlayerStats({ home: [], away: [] });
       } finally {
         if (!cancelled) setPlayersLoading(false);
@@ -676,10 +642,10 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               <View style={[styles.statsLoadingWrap, styles.statsEmptyMinHeight]}>
                 <Ionicons name="stats-chart-outline" size={48} color={BRAND.secondary} style={{ opacity: 0.6, marginBottom: 12 }} />
                 <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontWeight: '600', marginBottom: 6 }]}>
-                  Maç istatistikleri henüz mevcut değil.
+                  {isLiveStatus ? 'Bu maç için istatistikler şu an gösterilemiyor.' : 'Maç istatistikleri henüz mevcut değil.'}
                 </Text>
                 <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontSize: 13, opacity: 0.9 }]}>
-                  Maç başladıktan sonra veriler güncellenir.
+                  {isLiveStatus ? 'Veri kaynağı kısıtlı olabilir; maç bittikten sonra güncellenebilir.' : 'Maç başladıktan sonra veriler güncellenir.'}
                 </Text>
               </View>
             ) : (
@@ -1078,10 +1044,10 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                   <View style={[styles.statsLoadingWrap, styles.statsEmptyMinHeight]}>
                     <Ionicons name="stats-chart-outline" size={48} color={BRAND.secondary} style={{ opacity: 0.6, marginBottom: 12 }} />
                     <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontWeight: '600', marginBottom: 6 }]}>
-                      Oyuncu istatistikleri henüz mevcut değil.
+                      {isLiveStatus ? 'Bu maç için oyuncu istatistikleri şu an gösterilemiyor.' : 'Oyuncu istatistikleri henüz mevcut değil.'}
                     </Text>
                     <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontSize: 13, opacity: 0.9 }]}>
-                      Maç başladıktan sonra veriler güncellenir.
+                      {isLiveStatus ? 'Veri kaynağı kısıtlı olabilir; maç bittikten sonra güncellenebilir.' : 'Maç başladıktan sonra veriler güncellenir.'}
                     </Text>
                   </View>
                 );

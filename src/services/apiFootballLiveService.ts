@@ -20,11 +20,22 @@ const STORAGE_KEY_EXHAUSTED = 'apifootball_quota_exhausted';
 const QUOTA_LIMIT = 100;
 
 let quotaExhaustedCache: boolean | null = null;
+let _keyMissingWarned = false;
 
 function getApiKey(): string | null {
-  const key =
+  const fromProcess =
     typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_APIFOOTBALL_KEY;
-  return key && String(key).trim() ? String(key).trim() : null;
+  const fromWindow =
+    typeof window !== 'undefined' && (window as any).__EXPO_PUBLIC_APIFOOTBALL_KEY;
+  const key = fromProcess || fromWindow;
+  const value = key && String(key).trim() ? String(key).trim() : null;
+  if (!value && typeof __DEV__ !== 'undefined' && __DEV__ && !_keyMissingWarned) {
+    _keyMissingWarned = true;
+    try {
+      (console as any).warn?.('[ApiFootball] EXPO_PUBLIC_APIFOOTBALL_KEY yok; .env dosyasinda tanimli olmali ve "npm run web" yeniden baslatilmali.');
+    } catch (_) {}
+  }
+  return value;
 }
 
 /** Kota doldu mu? (bir kez dolunca kalıcı – sistem eski haline döner) */
@@ -123,6 +134,117 @@ async function fetchFixtureEvents(fixtureId: number): Promise<any[]> {
   return Array.isArray(list) ? list : [];
 }
 
+/** Api-Football fixture statistics (PRO plan) – [{ team, statistics: [{ type, value }] }] */
+async function fetchFixtureStatistics(fixtureId: number): Promise<any[] | null> {
+  const key = getApiKey();
+  if (!key) return null;
+  const res = await fetch(
+    `${BASE_URL}/fixtures/statistics?fixture=${fixtureId}`,
+    {
+      method: 'GET',
+      headers: {
+        'x-rapidapi-host': API_CONFIG.apiFootball.host,
+        'x-rapidapi-key': key,
+      },
+    }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const list = data?.response;
+  if (!Array.isArray(list) || list.length < 2) return null;
+  return list;
+}
+
+/** Api-Football fixture players (PRO plan) – [{ team, players: [{ player, statistics }] }] */
+async function fetchFixturePlayers(fixtureId: number): Promise<any[] | null> {
+  const key = getApiKey();
+  if (!key) return null;
+  const res = await fetch(
+    `${BASE_URL}/fixtures/players?fixture=${fixtureId}`,
+    {
+      method: 'GET',
+      headers: {
+        'x-rapidapi-host': API_CONFIG.apiFootball.host,
+        'x-rapidapi-key': key,
+      },
+    }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const list = data?.response;
+  if (!Array.isArray(list) || list.length === 0) return null;
+  return list;
+}
+
+/** Api-Football players response → { home: PlayerStats[], away: PlayerStats[] } (MatchStats format) */
+function transformApiPlayersToApp(apiResponse: any[]): { home: any[]; away: any[] } {
+  const result = { home: [] as any[], away: [] as any[] };
+  apiResponse.forEach((teamData: any, index: number) => {
+    const teamKey = index === 0 ? 'home' : 'away';
+    const teamId = teamData.team?.id;
+    const teamName = teamData.team?.name;
+    if (!teamData.players || !Array.isArray(teamData.players)) return;
+    result[teamKey] = teamData.players.map((playerData: any) => {
+      const player = playerData.player || {};
+      const stats = playerData.statistics?.[0] || {};
+      const games = stats.games || {};
+      const shots = stats.shots || {};
+      const goals = stats.goals || {};
+      const passes = stats.passes || {};
+      const tackles = stats.tackles || {};
+      const duels = stats.duels || {};
+      const dribbles = stats.dribbles || {};
+      const fouls = stats.fouls || {};
+      const cards = stats.cards || {};
+      const posStr = String(games.position || '').toUpperCase();
+      const isGoalkeeper = posStr === 'G' || posStr === 'GK' || String(games.position || '').toLowerCase().includes('goalkeeper');
+      const passesCompletedRaw = parseInt(passes.accuracy, 10) || 0;
+      const passesTotalRaw = parseInt(passes.total, 10) || 0;
+      const passAccuracy = passesTotalRaw > 0 ? Math.round((passesCompletedRaw / passesTotalRaw) * 100) : 0;
+      const rawSaves = stats.goalkeeper?.saves ?? stats.goals?.saves ?? stats.saves;
+      const gkSaves = isGoalkeeper ? (parseInt(rawSaves, 10) || 0) : 0;
+      const rawConceded = goals.conceded ?? stats.goals?.conceded;
+      const gkConceded = isGoalkeeper ? (parseInt(rawConceded, 10) || 0) : 0;
+      const savePct = (gkSaves + gkConceded) > 0 ? Math.round((100 * gkSaves) / (gkSaves + gkConceded)) : 0;
+      return {
+        id: player.id,
+        name: player.name,
+        photo: player.photo,
+        number: games.number,
+        position: games.position || 'MF',
+        rating: parseFloat(games.rating) || 0,
+        minutesPlayed: games.minutes || 0,
+        goals: goals.total || 0,
+        assists: goals.assists || 0,
+        shots: shots.total || 0,
+        shotsOnTarget: shots.on || 0,
+        totalPasses: passesTotalRaw,
+        passesCompleted: passesCompletedRaw,
+        passAccuracy,
+        keyPasses: passes.key || 0,
+        dribbleAttempts: dribbles.attempts || 0,
+        dribbleSuccess: dribbles.success || 0,
+        tackles: tackles.total || 0,
+        blocks: tackles.blocks || 0,
+        interceptions: tackles.interceptions || 0,
+        duelsTotal: duels.total || 0,
+        duelsWon: duels.won || 0,
+        foulsDrawn: fouls.drawn || 0,
+        foulsCommitted: fouls.committed || 0,
+        yellowCards: cards.yellow || 0,
+        redCards: cards.red || 0,
+        isGoalkeeper,
+        saves: gkSaves,
+        goalsAgainst: gkConceded,
+        savePercentage: isGoalkeeper ? savePct : undefined,
+        teamId,
+        teamName,
+      };
+    });
+  });
+  return result;
+}
+
 /** Api-Football fixture → uygulama matchData formatı (fixture + goals + teams) */
 function mapFixtureToOurFormat(
   apiFixture: any,
@@ -197,15 +319,17 @@ function mapEventToOurFormat(e: any): any {
 }
 
 /**
- * BJK–GS canlı verisi: fixture + events.
+ * BJK–GS canlı verisi: fixture + events + statistics + players.
  * Anahtar yoksa, kota dolduysa veya canlı BJK–GS maçı yoksa null döner.
- * Her başarılı çağrı 2 istek sayılır (fixtures + events); 100'e ulaşınca sistem eski haline döner.
+ * Her başarılı çağrı 4 istek sayılır (fixtures + events + statistics + players); 100'e ulaşınca sistem eski haline döner.
  */
 export async function fetchBjkGsLiveFromApiFootball(
   ourMatchId: string
 ): Promise<{
   matchData: Record<string, any>;
   events: any[];
+  statistics?: any[] | null;
+  players?: { home: any[]; away: any[] } | null;
 } | null> {
   const key = getApiKey();
   if (!key) return null;
@@ -216,11 +340,21 @@ export async function fetchBjkGsLiveFromApiFootball(
     if (!bjkGs) return null;
     const fixtureId = bjkGs?.fixture?.id;
     if (!fixtureId) return null;
-    const eventsRaw = await fetchFixtureEvents(fixtureId);
-    await incrementUsageAndMaybeExhaust(2);
+    const [eventsRaw, statsRaw, playersRaw] = await Promise.all([
+      fetchFixtureEvents(fixtureId),
+      fetchFixtureStatistics(fixtureId),
+      fetchFixturePlayers(fixtureId),
+    ]);
+    await incrementUsageAndMaybeExhaust(4);
     const matchData = mapFixtureToOurFormat(bjkGs, ourMatchId);
     const events = eventsRaw.map(mapEventToOurFormat);
-    return { matchData, events };
+    const players = playersRaw && playersRaw.length > 0 ? transformApiPlayersToApp(playersRaw) : null;
+    return {
+      matchData,
+      events,
+      statistics: statsRaw && statsRaw.length >= 2 ? statsRaw : null,
+      players: players && (players.home.length > 0 || players.away.length > 0) ? players : null,
+    };
   } catch (err) {
     console.warn('[ApiFootball] BJK-GS canlı veri alınamadı:', err);
     return null;

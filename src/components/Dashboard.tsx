@@ -46,6 +46,7 @@ import { WEBSITE_DARK_COLORS } from '../config/WebsiteDesignSystem';
 import { cardStyles, textStyles, containerStyles } from '../utils/styleHelpers';
 import { translateCountry } from '../utils/countryUtils';
 import { shortenCoachName } from '../utils/coachNameUtils';
+import { KNOWN_COACH_OVERRIDE, LIVE_STATUSES, isShowAsLive, getCoachDisplayName } from '../utils/matchCardUtils';
 import { getBulkCoach } from '../services/bulkDataService';
 import {
   MOCK_1H_TWO_LIVE_ENABLED,
@@ -167,10 +168,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
       const hoursSinceMatchBoth = matchTimestampBoth ? (nowBoth - matchTimestampBoth * 1000) / (1000 * 60 * 60) : 0;
       const isFinished = FINISHED_STATUSES.includes(matchStatus) || 
         (hoursSinceMatchBoth > 2 && (matchStatus === 'NS' || matchStatus === '' || matchStatus === 'TBD'));
+      const kickoffPassedBoth = matchTimestampBoth != null && nowBoth >= matchTimestampBoth * 1000;
+      const isLiveOrStarted = isLive || kickoffPassedBoth;
       const hasPrediction = match?.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id);
       
       let initialTab = 'squad'; // Varsayılan
-      if (isLive) {
+      if (isLiveOrStarted) {
         // ✅ Canlı maçta tahmin yoksa kadro sekmesine yönlendir
         initialTab = hasPrediction ? 'live' : 'squad';
       } else if (isFinished) {
@@ -190,7 +193,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
         awayTeamName,
         initialTab,
         hasPrediction,
-        isLive,
+        isLive: isLiveOrStarted,
         isFinished,
       });
       return;
@@ -200,9 +203,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     const FINISHED_STATUSES_SINGLE = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC'];
     const matchStatusSingle = match?.fixture?.status?.short || '';
     const isLive = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'].includes(matchStatusSingle);
-    // ✅ Timestamp kontrolü: Maç tarihi 2+ saat geçmişse ve statü NS/boş ise bitmiş say
+    // ✅ Kickoff geçtiyse maç başlamış say (API hâlâ NS dönse bile)
     const matchTimestamp = match?.fixture?.timestamp;
     const now = Date.now();
+    const kickoffPassed = matchTimestamp != null && now >= matchTimestamp * 1000;
+    const isLiveOrStarted = isLive || kickoffPassed;
+    // ✅ Timestamp kontrolü: Maç tarihi 2+ saat geçmişse ve statü NS/boş ise bitmiş say
     const hoursSinceMatch = matchTimestamp ? (now - matchTimestamp * 1000) / (1000 * 60 * 60) : 0;
     const isFinished = FINISHED_STATUSES_SINGLE.includes(matchStatusSingle) || 
       (hoursSinceMatch > 2 && (matchStatusSingle === 'NS' || matchStatusSingle === '' || matchStatusSingle === 'TBD'));
@@ -212,14 +218,14 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     console.log('📊 [Dashboard] Maç tıklandı:', {
       matchId: match?.fixture?.id,
       status: matchStatusSingle,
-      isLive,
+      isLive: isLiveOrStarted,
       isFinished,
       hasPrediction,
       hoursSinceMatch: hoursSinceMatch.toFixed(1),
       timestamp: matchTimestamp,
     });
     
-    if (isLive) {
+    if (isLiveOrStarted) {
       // ✅ Canlı maçta tahmin yoksa kadro sekmesine yönlendir
       // Sistem otomatik kadro oluşturmuş olacak, kullanıcı tahmin yapabilir
       const liveInitialTab = hasPrediction ? 'live' : 'squad';
@@ -258,7 +264,11 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
       return;
     }
     
-    // Tahmin yok: analiz odağı seçimi göster
+    // Tahmin yok ve maç başlamadıysa: analiz odağı seçimi göster (maç başlamışsa direkt detay)
+    if (kickoffPassed) {
+      onNavigate('match-detail', { id: String(match.fixture.id), initialTab: 'squad', matchData: match });
+      return;
+    }
     setSelectedMatchForAnalysis(match);
     setAnalysisFocusModalVisible(true);
   };
@@ -499,16 +509,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     }
   }, [matchData.hasLoadedOnce, matchData.loading, matchData.upcomingMatches.length, matchData.liveMatches.length]);
   
-  // ✅ Teknik direktör ismini al - sadece DB/cache'ten; yoksa "..." veya "Bilinmiyor"
-  const getCoachName = (teamName: string, teamId?: number): string => {
-    let name: string;
-    if (teamId && globalCoachCache[teamId]) {
-      name = globalCoachCache[teamId];
-    } else {
-      name = teamId ? '...' : 'Bilinmiyor';
-    }
-    return shortenCoachName(name);
-  };
+  const getCoachName = (_teamName: string, teamId?: number): string =>
+    getCoachDisplayName(teamId, globalCoachCache);
 
   // ✅ Takım adını çevir (milli takımlar için)
   const getDisplayTeamName = (teamName: string): string => {
@@ -574,6 +576,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     const _ = countdownTicker; // Re-render için kullan
     
     const currentMatchId = match?.fixture?.id;
+    const fixtureShort = match?.fixture?.status?.short ?? match?.status ?? '';
+    const showAsLive = isShowAsLive(status, fixtureShort, match?.fixture?.status?.elapsed);
     const isMock1hUpcoming =
       MOCK_1H_TWO_LIVE_ENABLED &&
       (currentMatchId === MOCK_MATCH_IDS.MOCK_1H_A || currentMatchId === MOCK_MATCH_IDS.MOCK_1H_B) &&
@@ -740,7 +744,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
               <View style={styles.matchCardTeamLeft}>
                 <Text style={[styles.matchCardTeamName, isLight && { color: themeColors.foreground }]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.home.name)}</Text>
                 <Text style={[styles.matchCardCoachName, isLight && { color: BRAND.accent }]} numberOfLines={1} ellipsizeMode="tail">{getCoachName(match.teams.home.name, match.teams.home.id)}</Text>
-                {(status === 'live' || status === 'finished') ? (
+                {(showAsLive || status === 'finished') ? (
                   <View style={[styles.matchCardScoreFrame, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
                     <Text style={[styles.matchCardScoreFrameText, isLight && { color: themeColors.foreground }]}>{match.goals?.home ?? 0}</Text>
                   </View>
@@ -764,48 +768,25 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
                     </Text>
                   </View>
                   
-                  {/* Saat veya canlı dakika */}
-                  {status === 'live' ? (
-                    // ✅ Canlı maçlar için özel tasarım - maç dakikasını göster
+                  {/* Saat veya canlı dakika - sadece gerçekten canlı (1H/2H/HT veya elapsed) ise dakika göster */}
+                  {showAsLive ? (
+                    // ✅ Canlı maçlar için özel tasarım - maç dakikasını göster (API elapsed veya HT)
                     (() => {
                       const _ = countdownTicker;
                       let displayTime = '';
-                      // ✅ Gerçek maçlar: API'den elapsed varsa kullan, yoksa timestamp'den hesapla
-                        const elapsed = match.fixture?.status?.elapsed;
-                        const extraTime = match.fixture?.status?.extraTime;
-                        const matchTimestamp = match.fixture?.timestamp * 1000;
-                        const nowMs = Date.now();
-                        const timeSinceStart = nowMs - matchTimestamp;
-                        
-                        if (elapsed != null && elapsed > 0) {
-                          // API'den gelen elapsed değeri var
-                          if (extraTime != null && extraTime > 0) {
-                            displayTime = `${elapsed}+${extraTime}'`;
-                          } else {
-                            displayTime = `${elapsed}'`;
-                          }
-                        } else if (timeSinceStart > 0 && timeSinceStart < 3 * 60 * 60 * 1000) {
-                          // ✅ YENİ: API'den elapsed yok ama maç başlamış olmalı (timestamp geçmiş)
-                          // Gerçek zamandan dakika hesapla (yaklaşık)
-                          const estimatedMinutes = Math.floor(timeSinceStart / 60000);
-                          
-                          if (estimatedMinutes < 45) {
-                            displayTime = `${estimatedMinutes}'`;
-                          } else if (estimatedMinutes < 60) {
-                            // Muhtemelen ilk yarı uzatması veya devre arası
-                            displayTime = `45+${Math.min(estimatedMinutes - 45, 5)}'`;
-                          } else if (estimatedMinutes < 105) {
-                            // İkinci yarı
-                            const secondHalfMinute = 46 + (estimatedMinutes - 60);
-                            displayTime = `${Math.min(secondHalfMinute, 90)}'`;
-                          } else {
-                            // İkinci yarı uzatması
-                            displayTime = `90+${Math.min(estimatedMinutes - 105, 5)}'`;
-                          }
+                      const elapsed = match.fixture?.status?.elapsed;
+                      const extraTime = match.fixture?.status?.extraTime;
+                      if (match.fixture?.status?.short === 'HT') {
+                        displayTime = "45'";
+                      } else if (elapsed != null && elapsed > 0) {
+                        if (extraTime != null && extraTime > 0) {
+                          displayTime = `${elapsed}+${extraTime}'`;
                         } else {
-                          displayTime = api.utils.formatMatchTime(match.fixture.timestamp);
+                          displayTime = `${elapsed}'`;
                         }
-                      
+                      } else {
+                        displayTime = api.utils.formatMatchTime(match.fixture.timestamp);
+                      }
                       return (
                         <View style={styles.matchCardLiveTimeContainer}>
                           <Text style={styles.matchCardLiveTimeText}>
@@ -833,7 +814,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
               <View style={styles.matchCardTeamRight}>
                 <Text style={[styles.matchCardTeamName, styles.matchCardTeamNameRight, isLight && { color: themeColors.foreground }]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.away.name)}</Text>
                 <Text style={[styles.matchCardCoachNameAway, isLight && { color: BRAND.accent }]} numberOfLines={1} ellipsizeMode="tail">{getCoachName(match.teams.away.name, match.teams.away.id)}</Text>
-                {(status === 'live' || status === 'finished') ? (
+                {(showAsLive || status === 'finished') ? (
                   <View style={[styles.matchCardScoreFrame, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
                     <Text style={[styles.matchCardScoreFrameText, isLight && { color: themeColors.foreground }]}>{match.goals?.away ?? 0}</Text>
                   </View>
@@ -844,17 +825,17 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
             </View>
             </View>
             
-            {/* Durum Badge'i (Canlı, Bitti, Geri Sayım, Kilitli) - her zaman görünür, kesilmez */}
+            {/* Durum Badge'i (Canlı, Bitti, Geri Sayım, Kilitli) - gerçekten canlı (1H/2H/HT) ise OYNANIYOR */}
             <View style={styles.matchCardLiveContainer}>
-              {status === 'live' ? (
+              {showAsLive ? (
                 <LinearGradient
-                  colors={['#dc2626', '#b91c1c']}
+                  colors={match.fixture?.status?.short === 'HT' ? ['#ea580c', '#c2410c'] : ['#dc2626', '#b91c1c']}
                   style={styles.matchCardLiveBadge}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
                   <View style={styles.matchCardLiveDot} />
-                  <Text style={styles.matchCardLiveText}>OYNANIYOR</Text>
+                  <Text style={styles.matchCardLiveText}>{match.fixture?.status?.short === 'HT' ? 'DEVRE ARASI' : 'OYNANIYOR'}</Text>
                 </LinearGradient>
               ) : status === 'finished' ? (
                 <View style={styles.matchCardFinishedContainer}>

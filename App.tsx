@@ -741,7 +741,6 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 0,
     paddingHorizontal: 0,
-    pointerEvents: 'box-none',
   },
   globalToastOverlay: {
     position: 'absolute',

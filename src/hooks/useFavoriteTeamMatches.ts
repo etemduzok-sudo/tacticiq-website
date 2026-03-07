@@ -7,6 +7,8 @@ import { useFavoriteTeams } from './useFavoriteTeams';
 import { logger } from '../utils/logger';
 import { getAllBulkMatches, isBulkDataValid } from '../services/bulkDataService';
 import { MOCK_1H_TWO_LIVE_ENABLED, getMock1HLiveMatches } from '../data/mockTestData';
+// Api-Football trial bitti – eski backend sistemine dönüldü
+// import { isBjkGsMatch, isApiFootballBjkGsEnabled, fetchBjkGsLiveFromApiFootball } from '../services/apiFootballLiveService';
 
 /** Mock maçların takım ID'leri – favorilerde bunlardan biri varsa mock maçlar listelenir. */
 const MOCK_1H_TEAM_IDS = [9011, 9012, 9021, 9022];
@@ -887,10 +889,11 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       
       const statusShort = (m: Match) => typeof m.fixture?.status === 'string' ? m.fixture.status : (m.fixture?.status?.short ?? '');
       
-      const newLive = byFav.filter(m => {
+      let newLive = byFav.filter(m => {
         if (FINISHED_STATUSES.includes(statusShort(m))) return false;
         return LIVE_STATUSES.includes(statusShort(m));
       });
+      
       
       const nowFinishedFromApi = byFav.filter(m => FINISHED_STATUSES.includes(statusShort(m)));
       
@@ -916,7 +919,6 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       // Biten maç ID'leri – canlı listesinde asla kalmasın
       const finishedIds = new Set(nowFinishedFromApi.map(m => m.fixture?.id));
 
-      // Live maçları güncelle: API canlıları + "saat bazlı canlı"; bitenleri çıkar (setState içinde setState çağırma – titreme önlenir)
       setLiveMatches(prev => {
         const newIds = new Set(newLive.map(m => m.fixture?.id));
         const timeBasedStillLive = prev.filter(

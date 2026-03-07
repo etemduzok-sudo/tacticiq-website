@@ -40,7 +40,8 @@ import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
 import { shortenCoachName } from '../utils/coachNameUtils';
 import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockMatchStart, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState, getMockUserTeamId, getMock1HLiveLineupArray } from '../data/mockTestData';
 import { NetworkErrorDisplay } from './NetworkErrorDisplay';
-import { isBjkGsMatch, isApiFootballBjkGsEnabled, fetchBjkGsLiveFromApiFootball } from '../services/apiFootballLiveService';
+// Api-Football trial bitti – eski backend sistemine dönüldü
+// import { isBjkGsMatch, isApiFootballBjkGsEnabled, fetchBjkGsLiveFromApiFootball } from '../services/apiFootballLiveService';
 
 interface MatchDetailProps {
   matchId: string;
@@ -577,28 +578,6 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     
     const fetchLiveData = async () => {
       try {
-        // ✅ BJK–GS maçı ve Api-Football anahtarı varsa: canlı veriyi Api-Football'dan al (sadece bu maç için deneme)
-        const currentMatchForBjkGs = liveMatchData || match;
-        if (currentMatchForBjkGs?.teams && isBjkGsMatch(currentMatchForBjkGs) && isApiFootballBjkGsEnabled()) {
-          const bjkGsData = await fetchBjkGsLiveFromApiFootball(matchId);
-          if (bjkGsData) {
-            setLiveMatchData(bjkGsData.matchData);
-            setLiveEvents(bjkGsData.events || []);
-            const [statsRes, lineupsRes] = await Promise.allSettled([
-              api.matches.getMatchStatistics(Number(matchId), true),
-              api.matches.getMatchLineups(Number(matchId), true),
-            ]);
-            if (statsRes.status === 'fulfilled' && statsRes.value?.success && statsRes.value.data != null) {
-              setLiveStatistics(statsRes.value.data);
-            }
-            if (lineupsRes.status === 'fulfilled' && lineupsRes.value?.success && lineupsRes.value.data?.length > 0) {
-              const hasStartXI = lineupsRes.value.data.some((l: any) => l.startXI && l.startXI.length >= 11);
-              if (hasStartXI) setManualLineups(lineupsRes.value.data);
-            }
-            return;
-          }
-        }
-
         // ✅ Paralel: canlı veriler + lineups (refresh ile; kadro açıklanınca hemen gelsin)
         const [matchRes, eventsRes, statsRes, lineupsRes] = await Promise.allSettled([
           api.matches.getMatchDetails(Number(matchId), true),
@@ -678,10 +657,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     // İlk çağrı hemen
     fetchLiveData();
     
-    // BJK–GS + Api-Football anahtarı varsa dakikada 1 güncelle (100 hak korunsun); diğer maçlar 5 sn
-    const isBjkGsWithKey = match?.teams && isBjkGsMatch(match) && isApiFootballBjkGsEnabled();
-    const intervalMs = isBjkGsWithKey ? 60000 : 5000;
-    const interval = setInterval(fetchLiveData, intervalMs);
+    const interval = setInterval(fetchLiveData, 5000);
     
     return () => {
       console.log('⏹️ Canlı maç güncelleme döngüsü durduruldu');
@@ -1344,10 +1320,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             squadEditingDisabled={predictionLocked}
             onComplete={() => setActiveTab('prediction')}
             onAttackFormationChangeConfirmed={() => {
-              // ✅ Sadece analiz odağı seçilmemişse modal'ı aç
-              // Analiz odağı zaten seçilmişse tekrar açma
-              // ✅ Maç canlıysa VEYA bitmişse analiz odağı atlanır (tahmin yapılamaz)
-              if (!effectiveAnalysisFocus && !isMatchLive && !isMatchFinished) {
+              // ✅ Sadece analiz odağı seçilmemişse modal'ı aç; maç başlamış/bitmişse asla açma (tahmin yapılamaz)
+              if (!effectiveAnalysisFocus && !isKadroLocked) {
                 setShowAnalysisFocusModal(true);
               }
             }}

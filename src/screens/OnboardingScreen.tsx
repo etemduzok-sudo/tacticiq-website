@@ -634,7 +634,7 @@ return (
     <SafeAreaView style={[styles.safeArea, isLight && { backgroundColor: themeColors.background }]}>
       {isLight ? (
         <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-          <View style={[styles.gridPattern, Platform.OS === 'web' && { backgroundImage: `linear-gradient(to right, rgba(15,42,36,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,42,36,0.08) 1px, transparent 1px)`, backgroundSize: '40px 40px' }]} />
+          <View style={[styles.gridPattern, { pointerEvents: 'none' }, Platform.OS === 'web' && { backgroundImage: `linear-gradient(to right, rgba(15,42,36,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,42,36,0.08) 1px, transparent 1px)`, backgroundSize: '40px 40px' }]} />
           <View style={styles.mainContent}>
             {currentStep !== 'language' && (
               <TouchableOpacity style={[styles.backButtonTop, { backgroundColor: themeColors.muted, borderColor: themeColors.border }]} onPress={handleBack} activeOpacity={0.7}>
@@ -671,7 +671,7 @@ return (
         </View>
       ) : (
         <LinearGradient colors={['#0a1612', '#0F2A24', '#0a1612']} style={styles.container} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
-          <View style={styles.gridPattern} />
+          <View style={[styles.gridPattern, { pointerEvents: 'none' }]} />
           <View style={styles.mainContent}>
             {currentStep !== 'language' && (
               <TouchableOpacity style={styles.backButtonTop} onPress={handleBack} activeOpacity={0.7}>
@@ -716,7 +716,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   gridPattern: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 1, zIndex: 0,
-    pointerEvents: 'none',
     ...Platform.select({
       web: { 
         backgroundImage: `linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)`, 

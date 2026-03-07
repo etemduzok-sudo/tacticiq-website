@@ -30,6 +30,7 @@ import { translateCountry } from '../utils/countryUtils';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SIZES } from '../theme/theme';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
+import { LIVE_STATUSES, isShowAsLive, getCoachDisplayName } from '../utils/matchCardUtils';
 import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 import { MatchPredictionSummaryCard } from '../components/match/MatchPredictionSummaryCard';
 
@@ -161,13 +162,8 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     }
   }, [matchData.hasLoadedOnce, matchData.loading]);
   
-  // ✅ Teknik direktör ismini al - cache'ten oku (API'den doldurulur)
-  const getCoachName = (teamName: string, teamId?: number): string => {
-    if (teamId && coachCache[teamId]) {
-      return coachCache[teamId];
-    }
-    return teamId ? '...' : 'Bilinmiyor';
-  };
+  const getCoachName = (_teamName: string, teamId?: number): string =>
+    getCoachDisplayName(teamId, coachCache);
 
   // ✅ Takım adını çevir (milli takımlar için)
   const getDisplayTeamName = (teamName: string): string => {
@@ -197,15 +193,11 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   // ✅ Canlı maçları selectedTeamIds ile filtrele (Tümü = boş → tüm favoriler, tek/çoklu = seçili takımlar)
   // ✅ SADECE gerçekten canlı olan maçları göster (status: 1H, 2H, HT, ET, BT, P, LIVE)
   const filteredLiveMatches = React.useMemo(() => {
-    const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
-    
-    // Önce gerçekten canlı olanları filtrele
     const actuallyLive = liveMatches.filter(m => {
       const status = m.fixture?.status?.short || '';
       const matchId = m.fixture?.id || m.id;
-      // Mock maç (999999) her zaman canlı kabul edilsin
       if (matchId === 999999) return true;
-      return LIVE_STATUSES.includes(status);
+      return LIVE_STATUSES.includes(status as any);
     });
     
     const filtered = filterByTeamIds(actuallyLive, selectedTeamIds);
@@ -255,6 +247,8 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   }) => {
     const homeColors = getTeamColors(match.teams.home.name);
     const awayColors = getTeamColors(match.teams.away.name);
+    const fixtureShort = match?.fixture?.status?.short ?? match?.status ?? '';
+    const showAsLive = isShowAsLive(status, fixtureShort, match?.fixture?.status?.elapsed);
     
     const handleLongPress = () => {
       if (hasPrediction && matchId != null && onDeletePrediction) {
@@ -273,7 +267,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     const pulseAnim = React.useRef(new RNAnimated.Value(1)).current;
     
     React.useEffect(() => {
-      if (status === 'live') {
+      if (showAsLive) {
         const animation = RNAnimated.loop(
           RNAnimated.sequence([
             RNAnimated.timing(pulseAnim, {
@@ -293,7 +287,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
       } else {
         pulseAnim.setValue(1);
       }
-    }, [status]);
+    }, [showAsLive]);
     
     return (
       <TouchableOpacity
@@ -377,16 +371,21 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                     </Text>
                   </View>
                   
-                  {/* Saat veya Canlı Dakika */}
+                  {/* Saat veya Canlı Dakika - sadece gerçekten canlı (1H/2H/HT veya elapsed) ise dakika göster */}
                   <LinearGradient
-                    colors={status === 'live' ? ['#dc2626', '#b91c1c'] : ['#10b981', '#059669']}
+                    colors={showAsLive ? (match.fixture?.status?.short === 'HT' ? ['#ea580c', '#c2410c'] : ['#dc2626', '#b91c1c']) : ['#10b981', '#059669']}
                     style={matchCardStyles.matchCardTimeBadge}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={[matchCardStyles.matchCardTimeText, status === 'live' && matchCardStyles.matchCardTimeTextLive]}>
-                      {status === 'live' && match.fixture?.status?.elapsed != null
-                        ? `${match.fixture.status.elapsed}'`
+                    <Text style={[matchCardStyles.matchCardTimeText, showAsLive && matchCardStyles.matchCardTimeTextLive]}>
+                      {showAsLive
+                        ? (match.fixture?.status?.short === 'HT'
+                          ? "45'"
+                          : (() => {
+                              const el = match.fixture?.status?.elapsed ?? (match as any).elapsed ?? (match as any).fixture?.elapsed;
+                              return el != null ? `${el}'` : api.utils.formatMatchTime(match.fixture.timestamp);
+                            })())
                         : api.utils.formatMatchTime(match.fixture.timestamp)}
                     </Text>
                   </LinearGradient>
@@ -407,17 +406,21 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               </View>
             </View>
             
-            {/* Durum Badge'i - Sabit yükseklik için her zaman render et */}
+            {/* Durum Badge'i - sadece gerçekten canlı (1H/2H/HT) ise DEVRE ARASI / OYNANIYOR göster */}
             <View style={matchCardStyles.matchCardLiveContainer}>
-              {status === 'live' ? (
+              {showAsLive ? (
                 <LinearGradient
-                  colors={['#dc2626', '#b91c1c']}
+                  colors={match.fixture?.status?.short === 'HT' ? ['#ea580c', '#c2410c'] : ['#dc2626', '#b91c1c']}
                   style={matchCardStyles.matchCardLiveBadge}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <RNAnimated.View style={[matchCardStyles.matchCardLiveDot, { opacity: pulseAnim }]} />
-                  <Text style={matchCardStyles.matchCardLiveText}>OYNANIYOR</Text>
+                  {match.fixture?.status?.short !== 'HT' && (
+                    <RNAnimated.View style={[matchCardStyles.matchCardLiveDot, { opacity: pulseAnim }]} />
+                  )}
+                  <Text style={matchCardStyles.matchCardLiveText}>
+                    {match.fixture?.status?.short === 'HT' ? 'DEVRE ARASI' : 'OYNANIYOR'}
+                  </Text>
                 </LinearGradient>
               ) : status === 'finished' ? (
                 <View style={matchCardStyles.matchCardFinishedHint}>

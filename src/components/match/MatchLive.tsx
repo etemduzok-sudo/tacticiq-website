@@ -276,8 +276,34 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   const lastEventsSignatureRef = useRef<string>('');
   useEffect(() => {
     if (!propEvents || !Array.isArray(propEvents) || !matchData) return;
-    const transformed = transformApiEventsToLiveEvents(propEvents, matchData);
+    let transformed = transformApiEventsToLiveEvents(propEvents, matchData);
     if (transformed.length === 0) return;
+    const hasHalftime = transformed.some(e =>
+      e.type === 'halftime' || (e.description && /ilk yarı bitiş|devre arası|half time|halftime/i.test(e.description))
+    );
+    const hasSecondHalf = transformed.some(e =>
+      (e.minute >= 46 && e.minute <= 90 && (e.extraTime == null || e.extraTime === 0)) ||
+      (e.type === 'kickoff' && e.minute === 46) ||
+      (e.description && /ikinci yarı başladı|second half/i.test(e.description))
+    );
+    if (hasSecondHalf && !hasHalftime) {
+      transformed = [...transformed, {
+        minute: 45,
+        extraTime: null,
+        type: 'halftime' as const,
+        team: null,
+        description: 'İlk yarı bitiş düdüğü',
+      }];
+      transformed.sort((a: LiveEvent, b: LiveEvent) => {
+        const aTime = a.minute + (a.extraTime || 0) * 0.01;
+        const bTime = b.minute + (b.extraTime || 0) * 0.01;
+        if (Math.abs(aTime - bTime) > 0.001) return bTime - aTime;
+        const sys = ['kickoff', 'halftime', 'fulltime', 'stoppage'];
+        const aSys = sys.includes(a.type) ? 0 : 1;
+        const bSys = sys.includes(b.type) ? 0 : 1;
+        return bSys - aSys;
+      });
+    }
     const signature = `${transformed.length}-${transformed[transformed.length - 1]?.minute ?? 0}-${transformed[transformed.length - 1]?.type ?? ''}-${transformed[transformed.length - 1]?.player ?? ''}-${transformed[transformed.length - 1]?.description ?? ''}`;
     if (signature === lastEventsSignatureRef.current) return;
     lastEventsSignatureRef.current = signature;
@@ -367,9 +393,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
           }
         } else {
           try {
-            const response = await api.matches.getMatchEventsLive(matchId, {
-              matchData: matchData?.teams ? { teams: matchData.teams } : undefined,
-            });
+            const response = await api.matches.getMatchEventsLive(matchId);
             if (response?.matchNotStarted) {
               setMatchNotStarted(true);
               setLiveEvents([]);
@@ -562,13 +586,40 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
           // ✅ "Maç başladı" eventini otomatik ekle (eğer yoksa)
           const hasKickoffEvent = transformedEvents.some(e => e.type === 'kickoff' && e.minute === 0);
           if (!hasKickoffEvent && transformedEvents.length > 0) {
-            // İlk event'ten önce "Maç başladı" eventini ekle
             transformedEvents.unshift({
               minute: 0,
               extraTime: null,
               type: 'kickoff',
               team: null,
               description: 'Maç başladı',
+            });
+          }
+          
+          // ✅ Devre arası (ilk yarı bitiş) eventi yoksa ve ikinci yarı eventi varsa sentetik ekle
+          const hasHalftimeEvent = transformedEvents.some(e =>
+            e.type === 'halftime' || (e.description && /ilk yarı bitiş|devre arası|half time|halftime/i.test(e.description))
+          );
+          const hasSecondHalfEvent = transformedEvents.some(e =>
+            (e.minute >= 46 && (e.extraTime == null || e.extraTime === 0)) ||
+            (e.type === 'kickoff' && e.minute === 46) ||
+            (e.description && /ikinci yarı başladı|second half/i.test(e.description))
+          );
+          if (hasSecondHalfEvent && !hasHalftimeEvent) {
+            transformedEvents.push({
+              minute: 45,
+              extraTime: null,
+              type: 'halftime',
+              team: null,
+              description: 'İlk yarı bitiş düdüğü',
+            });
+            transformedEvents.sort((a: LiveEvent, b: LiveEvent) => {
+              const aTime = a.minute + (a.extraTime || 0) * 0.01;
+              const bTime = b.minute + (b.extraTime || 0) * 0.01;
+              if (Math.abs(aTime - bTime) > 0.001) return bTime - aTime;
+              const sys = ['kickoff', 'halftime', 'fulltime', 'stoppage'];
+              const aSys = sys.includes(a.type) ? 0 : 1;
+              const bSys = sys.includes(b.type) ? 0 : 1;
+              return bSys - aSys;
             });
           }
           
@@ -912,7 +963,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                   ) : null}
                   {event.playerIn ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                      <Ionicons name="person-add-circle" size={14} color="#F97316" />
+                      <Ionicons name="person-add" size={14} color="#F97316" />
                       <Text style={styles.eventPlayer} numberOfLines={1}>
                         <Text style={{ fontWeight: '700' }}>{event.playerIn}</Text>
                       </Text>
@@ -970,7 +1021,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                       <Text style={[styles.eventPlayer, styles.eventPlayerRight]} numberOfLines={1}>
                         <Text style={{ fontWeight: '700' }}>{event.playerIn}</Text>
                       </Text>
-                      <Ionicons name="person-add-circle" size={14} color="#F97316" />
+                      <Ionicons name="person-add" size={14} color="#F97316" />
                     </View>
                   ) : null}
                 </>

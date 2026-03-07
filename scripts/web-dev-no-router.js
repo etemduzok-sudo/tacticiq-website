@@ -104,7 +104,11 @@ function startProxy() {
         res.writeHead(proxyRes.statusCode, proxyRes.headers);
         proxyRes.pipe(res);
       });
-      proxyReq.on('error', () => { res.writeHead(502); res.end('Metro (port ' + METRO_PORT + ') baglanti hatasi.'); });
+      proxyReq.on('error', (err) => {
+        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="10"><title>Yukleniyor</title><style>body{background:#0F2A24;color:#e2e8f0;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;} .box{text-align:center;padding:2rem;}</style></head><body><div class="box"><p>Metro baslatiliyor...</p><p>10 saniye icinde sayfa yenilenecek.</p><p>Yenilenmezse <a href="/" style="color:#5eead4;">buraya tiklayin</a>.</p></div></body></html>';
+        res.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8', 'Retry-After': '10' });
+        res.end(html);
+      });
       req.pipe(proxyReq);
     };
     let listening = 0;
@@ -156,7 +160,7 @@ async function main() {
     stdio: 'inherit',
     shell: true,
     cwd: root,
-    env: { ...process.env, EXPO_NO_DOTENV: '1', REACT_NATIVE_PACKAGER_PORT: String(METRO_PORT), BROWSER: 'none' },
+    env: { ...process.env, REACT_NATIVE_PACKAGER_PORT: String(METRO_PORT), BROWSER: 'none' },
   });
 
   expoChild.on('exit', (code) => process.exit(code != null ? code : 0));
